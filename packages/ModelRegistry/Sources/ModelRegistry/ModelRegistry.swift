@@ -1,6 +1,8 @@
 import Foundation
 import LLMCore
 import RuntimeOllama
+import RuntimeMLX
+import RuntimeLlamaCpp
 
 /// Central aggregator across every installed `LLMRuntime`. Scans them all in
 /// parallel, merges the results, and upgrades each `ModelInfo` with the
@@ -54,10 +56,11 @@ public actor ModelRegistry {
         self.runtimes = runtimes
     }
 
-    /// Default set for v1. MLX and llama.cpp adapters slot in during chunk 14;
-    /// this list grows to `[OllamaRuntime(), MLXRuntime(), LlamaCppRuntime()]`.
+    /// All three local runtimes, probed in parallel at scan time. Any that
+    /// aren't installed simply report `available: false` via the runtime
+    /// status and contribute no models.
     public static func defaultRuntimes() -> [any LLMRuntime] {
-        [OllamaRuntime()]
+        [OllamaRuntime(), MLXRuntime(), LlamaCppRuntime()]
     }
 
     // MARK: - Scan
