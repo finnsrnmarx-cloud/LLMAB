@@ -16,5 +16,12 @@ struct LLMABApp: App {
                 .frame(minWidth: 960, minHeight: 640)
                 .task { await store.refresh() }
         }
+
+        Settings {
+            SettingsView()
+                .environmentObject(store)
+                .environmentObject(tts)
+                .preferredColorScheme(.dark)
+        }
     }
 }

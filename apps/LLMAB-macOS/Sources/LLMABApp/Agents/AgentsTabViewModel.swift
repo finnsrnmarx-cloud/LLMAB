@@ -4,14 +4,23 @@ import ModelRegistry
 import AgentKit
 import SwiftUI
 
-/// Observable state + consent plumbing for the Agents tab.
-///
-/// Stores a running transcript of the agent's turns, tool calls, tool
-/// results, and errors. Implements `ConsentProvider` itself so every
-/// tool-call gate routes through a published `pendingConsent` request
-/// that the SwiftUI layer renders as a dialog.
+/// A plain Sendable adapter that routes consent requests back to the
+/// @MainActor view model via a stored closure. Keeps the view model free
+/// of direct Sendable protocol conformance (which is thorny for @MainActor
+/// classes in Swift 5.9).
+struct ClosureConsent: ConsentProvider {
+    let handler: @Sendable (String, Data) async -> Bool
+    func approve(toolId: String, argumentsJSON: Data) async -> Bool {
+        await handler(toolId, argumentsJSON)
+    }
+}
+
+/// Observable state for the Agents tab. Stores a running transcript of the
+/// agent's turns, tool calls, tool results, and errors. Consent gating is
+/// routed through a stored `ClosureConsent` so the view model itself doesn't
+/// need to conform to the Sendable `ConsentProvider` protocol.
 @MainActor
-final class AgentsTabViewModel: ObservableObject, ConsentProvider {
+final class AgentsTabViewModel: ObservableObject {
 
     // MARK: - Transcript
 
@@ -90,11 +99,16 @@ final class AgentsTabViewModel: ObservableObject, ConsentProvider {
             tools.append(WebSearchTool())
         }
 
+        // Build a plain Sendable consent adapter that hops back to
+        // MainActor to drive the @Published `pendingConsent`.
+        let consent = ClosureConsent { [weak self] toolId, args in
+            await self?.requestConsent(toolId: toolId, argumentsJSON: args) ?? false
+        }
         let session = AgentSession(
             runtime: runtime,
             modelInfo: info,
             tools: tools,
-            consent: self
+            consent: consent
         )
 
         isRunning = true
@@ -136,15 +150,15 @@ final class AgentsTabViewModel: ObservableObject, ConsentProvider {
         input = ""
     }
 
-    // MARK: - ConsentProvider
+    // MARK: - Consent
 
-    nonisolated func approve(toolId: String, argumentsJSON: Data) async -> Bool {
+    /// Called by ClosureConsent from an unisolated context. Runs on MainActor
+    /// because the whole class is, so the @Published write is safe.
+    func requestConsent(toolId: String, argumentsJSON: Data) async -> Bool {
         await withCheckedContinuation { cont in
-            Task { @MainActor in
-                let pending = PendingConsent(toolId: toolId, argumentsJSON: argumentsJSON)
-                self.consentContinuations[pending.id] = cont
-                self.pendingConsent = pending
-            }
+            let pending = PendingConsent(toolId: toolId, argumentsJSON: argumentsJSON)
+            self.consentContinuations[pending.id] = cont
+            self.pendingConsent = pending
         }
     }
 
