@@ -1,8 +1,9 @@
 import SwiftUI
 import UIKitOmega
 
-/// Left-side file tree for the Code tab. Recursive, lazy-loaded,
-/// aurora-coded: cooler sub-palette, monospace, subtle gutter stripe.
+/// Left-side file tree for the Code tab. Recursive, lazy-loaded, monospace,
+/// cooler sub-palette. The recursive row is factored into a dedicated struct
+/// (`CodeTreeRow`) so SwiftUI can resolve the opaque `some View` return type.
 struct CodeTreeView: View {
     @ObservedObject var vm: CodeTabViewModel
 
@@ -16,7 +17,7 @@ struct CodeTreeView: View {
                         rootHeader(root: root)
                     }
                     ForEach(vm.treeChildren) { node in
-                        nodeRow(node: node, depth: 0)
+                        CodeTreeRow(vm: vm, node: node, depth: 0)
                     }
                 }
                 .padding(.vertical, 8)
@@ -49,20 +50,27 @@ struct CodeTreeView: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
     }
+}
 
-    @ViewBuilder
-    private func nodeRow(node: CodeTreeNode, depth: Int) -> some View {
+/// One row in the tree. Recursion is through the struct type itself, which
+/// SwiftUI can resolve cleanly.
+struct CodeTreeRow: View {
+    @ObservedObject var vm: CodeTabViewModel
+    let node: CodeTreeNode
+    let depth: Int
+
+    var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            row(for: node, depth: depth)
+            rowButton
             if node.isDirectory, vm.expanded.contains(node.url) {
                 ForEach(vm.children(of: node)) { child in
-                    nodeRow(node: child, depth: depth + 1)
+                    CodeTreeRow(vm: vm, node: child, depth: depth + 1)
                 }
             }
         }
     }
 
-    private func row(for node: CodeTreeNode, depth: Int) -> some View {
+    private var rowButton: some View {
         let isSelected = vm.selectedFile == node.url
         let indent = CGFloat(depth) * 14 + 12
         return Button {
@@ -117,13 +125,13 @@ struct CodeTreeView: View {
     private func icon(for node: CodeTreeNode) -> String {
         if node.isDirectory { return "folder" }
         switch node.ext {
-        case "swift":                return "swift"
-        case "md", "markdown":       return "doc.text"
-        case "json", "yml", "yaml":  return "curlybraces.square"
-        case "sh", "bash", "zsh":    return "terminal"
-        case "py":                   return "p.circle"
+        case "swift":                  return "swift"
+        case "md", "markdown":         return "doc.text"
+        case "json", "yml", "yaml":    return "curlybraces.square"
+        case "sh", "bash", "zsh":      return "terminal"
+        case "py":                     return "p.circle"
         case "js", "ts", "jsx", "tsx": return "j.circle"
-        default:                     return "doc"
+        default:                       return "doc"
         }
     }
 }

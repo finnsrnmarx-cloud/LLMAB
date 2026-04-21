@@ -11,7 +11,7 @@ struct CodeAnalysisPane: View {
         VStack(spacing: 0) {
             header
             Divider().overlay(AuroraGradient.linear(.code).opacity(0.25))
-            body(for: vm.selectedFile)
+            content(for: vm.selectedFile)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
@@ -67,7 +67,7 @@ struct CodeAnalysisPane: View {
     // MARK: - Body
 
     @ViewBuilder
-    private func body(for file: URL?) -> some View {
+    private func content(for file: URL?) -> some View {
         if let error = vm.error {
             errorView(error)
         } else if file == nil {
