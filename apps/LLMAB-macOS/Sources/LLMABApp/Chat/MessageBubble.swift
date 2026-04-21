@@ -1,11 +1,15 @@
 import SwiftUI
 import LLMCore
+import MediaKit
 import UIKitOmega
 
 /// One row in the conversation. User turns sit right-aligned with an
 /// indigo-deep background; assistant turns sit left-aligned with a slim
-/// aurora-gradient stripe on the leading edge.
+/// aurora-gradient stripe on the leading edge. Assistant turns carry a
+/// speaker button that feeds TTSService; an AuroraRing pulses while
+/// speaking.
 struct MessageBubble: View {
+    @EnvironmentObject private var tts: TTSService
     let message: Message
     let isStreaming: Bool
 
@@ -54,11 +58,40 @@ struct MessageBubble: View {
                         .foregroundStyle(Midnight.mist)
                         .textSelection(.enabled)
                         .fixedSize(horizontal: false, vertical: true)
+                    if !message.textContent.isEmpty && !isStreaming {
+                        speakerButton
+                    }
                 }
             }
             .padding(.vertical, 2)
 
             Spacer(minLength: 0)
         }
+    }
+
+    // MARK: - Speaker button
+
+    private var speakerButton: some View {
+        Button {
+            if tts.isSpeaking {
+                tts.stop()
+            } else {
+                tts.speak(message.textContent)
+            }
+        } label: {
+            HStack(spacing: 6) {
+                if tts.isSpeaking {
+                    AuroraRing(size: 12, lineWidth: 1.5, state: .running)
+                } else {
+                    Image(systemName: "speaker.wave.2")
+                        .font(.system(size: 11))
+                }
+                Text(tts.isSpeaking ? "stop" : "speak")
+                    .font(.system(.caption2, design: .monospaced))
+            }
+            .foregroundStyle(Midnight.fog)
+        }
+        .buttonStyle(.plain)
+        .help("Read this response with AVSpeechSynthesizer")
     }
 }

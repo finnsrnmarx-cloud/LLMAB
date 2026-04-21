@@ -2,10 +2,14 @@ import SwiftUI
 import LLMCore
 import UIKitOmega
 
-/// Scrolling message list + composer. Used by ChatTab when Mode == .chat.
+/// Scrolling message list + composer. The view model is injected from
+/// ChatTab so that both ChatConversationView and DictateView share a single
+/// conversation and send pipeline.
 struct ChatConversationView: View {
     @EnvironmentObject private var store: AppStore
-    @StateObject private var vm = ChatViewModel()
+    @ObservedObject var vm: ChatViewModel
+
+    init(chat: ChatViewModel) { self._vm = ObservedObject(wrappedValue: chat) }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -14,7 +18,6 @@ struct ChatConversationView: View {
             Divider().overlay(AuroraGradient.linear(.full).opacity(0.25))
             composer
         }
-        .onAppear { vm.bind(to: store) }
     }
 
     // MARK: - Model header strip

@@ -1,9 +1,8 @@
 import SwiftUI
 import UIKitOmega
 
-/// Primary tab — default on launch. Sub-modes live inside a segmented picker
-/// (Live, Chat, Dictate, Image, Create-image). Typed Chat is live in chunk 8;
-/// remaining sub-modes come online in chunks 9–15.
+/// Primary tab — default on launch. Sub-modes share a single ChatViewModel
+/// so dictation can submit through the same pipeline as typing.
 struct ChatTab: View {
     enum Mode: String, CaseIterable, Identifiable {
         case live = "Live"
@@ -14,6 +13,8 @@ struct ChatTab: View {
         var id: String { rawValue }
     }
     @State private var mode: Mode = .chat
+    @StateObject private var chat = ChatViewModel()
+    @EnvironmentObject private var store: AppStore
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -32,18 +33,13 @@ struct ChatTab: View {
             Group {
                 switch mode {
                 case .chat:
-                    ChatConversationView()
+                    ChatConversationView(chat: chat)
+                case .dictate:
+                    DictateView(chat: chat)
                 case .live:
                     PlaceholderCard(
-                        title: "Ships in chunk 9",
-                        message: "Live conversation: continuous mic → Gemma 4 E → AVSpeechSynthesizer out. Requires an audio-capable model (E2B / E4B).",
-                        palette: .full
-                    )
-                    Spacer()
-                case .dictate:
-                    PlaceholderCard(
-                        title: "Ships in chunk 9",
-                        message: "Press-to-talk dictation via Apple Speech framework. Transcribed text lands in the composer; you edit and send.",
+                        title: "Ships later in chunk 9.5 / 13",
+                        message: "Continuous live conversation: press once, the app listens, transcribes, replies, and speaks — then loops. Uses the same DictationService + TTSService; requires audio-capable model (E2B / E4B).",
                         palette: .full
                     )
                     Spacer()
@@ -65,5 +61,6 @@ struct ChatTab: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .onAppear { chat.bind(to: store) }
     }
 }
