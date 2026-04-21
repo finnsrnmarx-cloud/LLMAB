@@ -16,7 +16,8 @@ let package = Package(
         .library(name: "AgentKit", targets: ["AgentKit"]),
         .library(name: "MediaKit", targets: ["MediaKit"]),
         .library(name: "UIKitOmega", targets: ["UIKitOmega"]),
-        .executable(name: "llmab", targets: ["llmab"])
+        .executable(name: "llmab", targets: ["llmab"]),
+        .executable(name: "LLMABApp", targets: ["LLMABApp"])
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-argument-parser.git", from: "1.3.0")
@@ -89,6 +90,18 @@ let package = Package(
                 .product(name: "ArgumentParser", package: "swift-argument-parser")
             ],
             path: "cli/llmab/Sources/llmab"
+        ),
+        .executableTarget(
+            name: "LLMABApp",
+            dependencies: [
+                "LLMCore",
+                "ModelRegistry",
+                "RuntimeOllama",
+                "UIKitOmega",
+                "AgentKit",
+                "MediaKit"
+            ],
+            path: "apps/LLMAB-macOS/Sources/LLMABApp"
         )
     ]
 )

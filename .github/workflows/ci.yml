@@ -21,8 +21,11 @@ jobs:
       - name: Swift version
         run: swift --version
 
-      - name: Build
+      - name: Build (libraries + CLI)
         run: swift build -c debug
+
+      - name: Build (LLMABApp macOS app target)
+        run: swift build -c debug --target LLMABApp
 
       - name: Test
         run: swift test --parallel
