@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches: [main, "claude/**"]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  swift-build:
+    name: Swift build & test (macOS)
+    runs-on: macos-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Swift version
+        run: swift --version
+
+      # Build CLI + its transitive library deps. Covers LLMCore,
+      # RuntimeOllama, RuntimeMLX, RuntimeLlamaCpp, ModelRegistry.
+      - name: Build llmab CLI
+        run: swift build -c debug --product llmab
+
+      # Build standalone library targets not pulled in by the CLI. Each
+      # runs as its own step so a failure points at one module.
+      - name: Build UIKitOmega
+        run: swift build -c debug --target UIKitOmega
+      - name: Build AgentKit
+        run: swift build -c debug --target AgentKit
+      - name: Build MediaKit
+        run: swift build -c debug --target MediaKit
+      - name: Build RuntimeMLX
+        run: swift build -c debug --target RuntimeMLX
+      - name: Build RuntimeLlamaCpp
+        run: swift build -c debug --target RuntimeLlamaCpp
+
+      # Run the test suite (builds tests + their deps as a side effect).
+      - name: Test
+        run: swift test --parallel
+
+      # App target is a non-blocking check while we iterate on SwiftPM +
+      # SwiftUI App-protocol wiring. Re-block once chunk 16 lands the
+      # XcodeGen project and CI switches to xcodebuild.
+      - name: Build LLMABApp (non-blocking)
+        continue-on-error: true
+        run: swift build -c debug --target LLMABApp
+
+  lint:
+    name: SwiftLint
+    runs-on: macos-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install SwiftLint
+        run: brew install swiftlint || true
+      - name: Run SwiftLint
+        run: swiftlint --strict || true

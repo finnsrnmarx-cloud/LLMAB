@@ -1,0 +1,43 @@
+# SwiftPM
+.build/
+.swiftpm/
+Packages/
+Package.resolved
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcuserdata/
+
+# Xcode
+DerivedData/
+*.xcuserstate
+*.xcuserdatad/
+build/
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Swift
+*.o
+*.swiftdoc
+*.swiftmodule
+*.swiftsourceinfo
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Signing / secrets
+*.p12
+*.provisionprofile
+*.certSigningRequest
+.env
+.env.local
+
+# Node (docs tooling if any)
+node_modules/
+
+# Editor
+.vscode/
+.idea/
+*.swp

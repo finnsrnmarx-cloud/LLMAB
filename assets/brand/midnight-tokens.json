@@ -1,0 +1,14 @@
+{
+  "name": "ω midnight",
+  "description": "Near-black base palette. Layered from darkest (window) to lightest (active surface).",
+  "colors": {
+    "void":        { "hex": "#050712", "use": "window background, outside safe area" },
+    "midnight":    { "hex": "#0A0B14", "use": "primary app background" },
+    "abyss":       { "hex": "#10132A", "use": "card / tab content surface" },
+    "indigo-deep": { "hex": "#141828", "use": "hover / active surface" },
+    "navy":        { "hex": "#1C2340", "use": "selected row, CLI prompt gutter" },
+    "fog":         { "hex": "#8A92B2", "use": "secondary label" },
+    "mist":        { "hex": "#C7CCE0", "use": "primary label on midnight" },
+    "white-ω":     { "hex": "#F5F6FA", "use": "ω mark fill when static" }
+  }
+}

@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!--
+    V1 distribution target: Developer ID + direct DMG (App Sandbox OFF).
+    This lets the Code tab scan arbitrary folders and the Agents tab run
+    shell commands under user consent. A sandboxed Mac App Store build is
+    tracked for post-v1 with reduced capability (see docs/APP-STORE.md).
+    -->
+
+    <key>com.apple.security.cs.allow-jit</key>
+    <false/>
+
+    <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+    <false/>
+
+    <!-- Keep library validation on; MLX / llama.cpp dylibs must be signed
+         by the same team or Apple. If a third-party runtime needs to load
+         unsigned libs, flip this off in the signed variant only. -->
+    <key>com.apple.security.cs.disable-library-validation</key>
+    <false/>
+
+    <key>com.apple.security.device.audio-input</key>
+    <true/>
+
+    <key>com.apple.security.device.camera</key>
+    <true/>
+
+    <!-- Speech recognition (Apple on-device Speech framework). -->
+    <key>com.apple.security.personal-information.speech-recognition</key>
+    <true/>
+</dict>
+</plist>
