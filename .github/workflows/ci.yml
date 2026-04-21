@@ -26,13 +26,18 @@ jobs:
       - name: Build llmab CLI
         run: swift build -c debug --product llmab
 
-      # Build standalone library targets not pulled in by the CLI.
+      # Build standalone library targets not pulled in by the CLI. Each
+      # runs as its own step so a failure points at one module.
       - name: Build UIKitOmega
         run: swift build -c debug --target UIKitOmega
       - name: Build AgentKit
         run: swift build -c debug --target AgentKit
       - name: Build MediaKit
         run: swift build -c debug --target MediaKit
+      - name: Build RuntimeMLX
+        run: swift build -c debug --target RuntimeMLX
+      - name: Build RuntimeLlamaCpp
+        run: swift build -c debug --target RuntimeLlamaCpp
 
       # Run the test suite (builds tests + their deps as a side effect).
       - name: Test
