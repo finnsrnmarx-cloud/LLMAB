@@ -44,11 +44,4 @@ public struct OmegaSpinner: View {
             .accessibilityLabel("working")
     }
 }
-
-#Preview {
-    ZStack {
-        Midnight.midnight.ignoresSafeArea()
-        OmegaSpinner(size: 64)
-    }
-}
 #endif

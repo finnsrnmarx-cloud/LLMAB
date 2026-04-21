@@ -7,8 +7,9 @@ import FoundationNetworking
 /// Thin URLSession wrapper for the Ollama HTTP API. Public only to the module;
 /// `OllamaRuntime` is the `LLMRuntime` façade.
 ///
-/// Exposed as `actor` so retries / in-flight bookkeeping stay localised.
-final class OllamaClient: Sendable {
+/// Marked `@unchecked Sendable` because URLSession is not officially Sendable
+/// under Swift 5.x but is thread-safe in practice.
+final class OllamaClient: @unchecked Sendable {
 
     let endpoint: URL
     let session: URLSession

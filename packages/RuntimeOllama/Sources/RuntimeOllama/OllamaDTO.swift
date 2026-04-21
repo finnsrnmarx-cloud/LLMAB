@@ -6,7 +6,7 @@ enum OllamaDTO {
 
     // MARK: - GET /api/tags
 
-    struct TagsResponse: Decodable {
+    struct TagsResponse: Decodable, Sendable {
         let models: [TagModel]
     }
 

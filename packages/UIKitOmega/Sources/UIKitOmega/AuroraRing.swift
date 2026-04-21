@@ -46,7 +46,7 @@ public struct AuroraRing: View {
                 }
             }
             .animation(.easeInOut(duration: 0.25), value: state)
-            .accessibilityLabel(accessibilityText)
+            .accessibilityLabel(Text(accessibilityText))
     }
 
     // MARK: - Style resolution
@@ -66,22 +66,10 @@ public struct AuroraRing: View {
 
     private var accessibilityText: String {
         switch state {
-        case .idle: "idle"
-        case .running: "running"
-        case .success: "finished"
-        case .failure: "failed"
-        }
-    }
-}
-
-#Preview {
-    ZStack {
-        Midnight.midnight.ignoresSafeArea()
-        HStack(spacing: 24) {
-            AuroraRing(size: 40, state: .idle)
-            AuroraRing(size: 40, state: .running)
-            AuroraRing(size: 40, state: .success)
-            AuroraRing(size: 40, state: .failure)
+        case .idle: return "idle"
+        case .running: return "running"
+        case .success: return "finished"
+        case .failure: return "failed"
         }
     }
 }

@@ -43,11 +43,4 @@ public struct OmegaMark: View {
             .accessibilityLabel("omega")
     }
 }
-
-#Preview {
-    ZStack {
-        Midnight.midnight.ignoresSafeArea()
-        OmegaMark(size: 120)
-    }
-}
 #endif

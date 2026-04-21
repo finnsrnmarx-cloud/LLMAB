@@ -53,18 +53,4 @@ public struct CLIPrompt: View {
         .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 }
-
-#Preview {
-    struct Demo: View {
-        @State var text = ""
-        var body: some View {
-            ZStack {
-                Midnight.midnight.ignoresSafeArea()
-                CLIPrompt(text: $text, isWorking: true) {}
-                    .padding(24)
-            }
-        }
-    }
-    return Demo()
-}
 #endif
