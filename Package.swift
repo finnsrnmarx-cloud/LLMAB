@@ -19,7 +19,7 @@ let package = Package(
         .executable(name: "llmab", targets: ["llmab"])
     ],
     dependencies: [
-        .package(url: "https://github.com/apple/swift-argument-parser.git", from: "1.3.0")
+        // swift-argument-parser reintroduced in chunk 6 (`llmab` subcommands)
     ],
     targets: [
         .target(
@@ -70,8 +70,7 @@ let package = Package(
             dependencies: [
                 "LLMCore",
                 "ModelRegistry",
-                "RuntimeOllama",
-                .product(name: "ArgumentParser", package: "swift-argument-parser")
+                "RuntimeOllama"
             ],
             path: "cli/llmab/Sources/llmab"
         )
