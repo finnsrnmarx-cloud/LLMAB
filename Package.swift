@@ -36,6 +36,11 @@ let package = Package(
             dependencies: ["LLMCore"],
             path: "packages/RuntimeOllama/Sources/RuntimeOllama"
         ),
+        .testTarget(
+            name: "RuntimeOllamaTests",
+            dependencies: ["RuntimeOllama", "LLMCore"],
+            path: "packages/RuntimeOllama/Tests/RuntimeOllamaTests"
+        ),
         .target(
             name: "RuntimeMLX",
             dependencies: ["LLMCore"],
