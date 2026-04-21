@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <radialGradient id="midnight" cx="50%" cy="50%" r="70%">
+      <stop offset="0%"  stop-color="#141828"/>
+      <stop offset="55%" stop-color="#0A0B14"/>
+      <stop offset="100%" stop-color="#050712"/>
+    </radialGradient>
+    <linearGradient id="aurora" x1="10%" y1="10%" x2="90%" y2="90%">
+      <stop offset="0%"  stop-color="#FF3B6B"/>
+      <stop offset="20%" stop-color="#FF8A3D"/>
+      <stop offset="40%" stop-color="#FFD23D"/>
+      <stop offset="58%" stop-color="#4DE28C"/>
+      <stop offset="74%" stop-color="#3BC6FF"/>
+      <stop offset="88%" stop-color="#7A5CFF"/>
+      <stop offset="100%" stop-color="#C94BFF"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="18" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- rounded-square midnight base (macOS squircle approximation) -->
+  <rect x="0" y="0" width="1024" height="1024" rx="230" ry="230" fill="url(#midnight)"/>
+
+  <!-- aurora halo behind the mark -->
+  <circle cx="512" cy="512" r="300" fill="none" stroke="url(#aurora)" stroke-width="6" opacity="0.35"/>
+  <circle cx="512" cy="512" r="220" fill="none" stroke="url(#aurora)" stroke-width="3" opacity="0.20"/>
+
+  <!-- the ω mark, scaled up from omega-mark.svg -->
+  <g transform="translate(-256,-256) scale(3)" filter="url(#glow)">
+    <path d="
+      M 62 180
+      C 62 120, 92 92, 116 120
+      C 128 134, 128 156, 116 170
+      C 108 180, 100 180, 98 178
+      M 158 178
+      C 156 180, 148 180, 140 170
+      C 128 156, 128 134, 140 120
+      C 164 92, 194 120, 194 180
+    "
+          fill="none"
+          stroke="url(#aurora)"
+          stroke-width="14"
+          stroke-linecap="round"
+          stroke-linejoin="round"/>
+  </g>
+</svg>

@@ -1,10 +1,14 @@
 # Brand assets
 
-Brand kit lands in **chunk 2**. Expected contents:
+Landed in chunk 2.
 
-- `omega-mark.svg` — the lowercase ω glyph with live aurora-gradient stroke.
-- `app-icon-1024.png` — ω on a midnight radial, rendered for macOS/iOS.
-- `aurora-tokens.json` — hex stops for the full-spectrum aurora gradient.
-- `midnight-tokens.json` — `#050712` / `#0A0B14` / `#141828` base colors.
+| File                       | Purpose                                                                 |
+|----------------------------|-------------------------------------------------------------------------|
+| `omega-mark.svg`           | The lowercase ω glyph with aurora-gradient stroke on a midnight disk.   |
+| `app-icon-concept.svg`     | Concept icon at 1024² — midnight squircle + aurora halo + ω.            |
+| `aurora-tokens.json`       | Full-spectrum aurora stops + cooler `codeStops` for the Code tab.       |
+| `midnight-tokens.json`     | Near-black palette (void, midnight, abyss, indigo-deep, navy, …).       |
 
-All downstream SwiftUI components (`UIKitOmega`) read from these tokens so the palette is defined in one place.
+Token values are mirrored in Swift at `packages/UIKitOmega/Sources/UIKitOmega/Midnight.swift` and `…/AuroraGradient.swift`. Any palette change must be made in both places; chunk 15 introduces a code-gen step to keep them in sync.
+
+The final `.icns` and iOS/iPadOS variants ship with the Xcode project in chunk 7.

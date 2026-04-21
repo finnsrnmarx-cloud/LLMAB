@@ -65,6 +65,11 @@ let package = Package(
             name: "UIKitOmega",
             path: "packages/UIKitOmega/Sources/UIKitOmega"
         ),
+        .testTarget(
+            name: "UIKitOmegaTests",
+            dependencies: ["UIKitOmega"],
+            path: "packages/UIKitOmega/Tests/UIKitOmegaTests"
+        ),
         .executableTarget(
             name: "llmab",
             dependencies: [

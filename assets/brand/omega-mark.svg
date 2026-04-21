@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <defs>
+    <linearGradient id="aurora" x1="0%" y1="0%" x2="100%" y2="100%" gradientUnits="userSpaceOnUse">
+      <stop offset="0%"  stop-color="#FF3B6B"/>
+      <stop offset="14%" stop-color="#FF8A3D"/>
+      <stop offset="28%" stop-color="#FFD23D"/>
+      <stop offset="42%" stop-color="#4DE28C"/>
+      <stop offset="56%" stop-color="#3BC6FF"/>
+      <stop offset="70%" stop-color="#7A5CFF"/>
+      <stop offset="84%" stop-color="#C94BFF"/>
+      <stop offset="100%" stop-color="#FF3B6B"/>
+    </linearGradient>
+    <radialGradient id="midnight" cx="50%" cy="55%" r="60%">
+      <stop offset="0%"  stop-color="#10132A"/>
+      <stop offset="70%" stop-color="#0A0B14"/>
+      <stop offset="100%" stop-color="#050712"/>
+    </radialGradient>
+  </defs>
+
+  <!-- midnight disk background -->
+  <circle cx="128" cy="128" r="120" fill="url(#midnight)"/>
+
+  <!--
+    Lowercase omega (ω) stroked in the aurora gradient.
+    Path = stylised ω: two lobes meeting at a central dip,
+    feet splayed outward.
+  -->
+  <path d="
+    M 62 180
+    C 62 120, 92 92, 116 120
+    C 128 134, 128 156, 116 170
+    C 108 180, 100 180, 98 178
+    M 158 178
+    C 156 180, 148 180, 140 170
+    C 128 156, 128 134, 140 120
+    C 164 92, 194 120, 194 180
+  "
+        fill="none"
+        stroke="url(#aurora)"
+        stroke-width="14"
+        stroke-linecap="round"
+        stroke-linejoin="round"/>
+</svg>
