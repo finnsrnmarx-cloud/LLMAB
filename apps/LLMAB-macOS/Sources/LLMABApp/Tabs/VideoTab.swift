@@ -13,7 +13,7 @@ struct VideoTab: View {
 
             PlaceholderCard(
                 title: "Ships in chunk 13",
-                body: "AVCaptureSession at 1 fps → frame batches to Gemma 4 26B or 31B. Parallel mic → ASR. AVSpeechSynthesizer TTS response. A spinning ω sits in the preview corner while capture is live; the tab gates on model capability (disabled with tooltip on E-series).",
+                message: "AVCaptureSession at 1 fps → frame batches to Gemma 4 26B or 31B. Parallel mic → ASR. AVSpeechSynthesizer TTS response. A spinning ω sits in the preview corner while capture is live; the tab gates on model capability (disabled with tooltip on E-series).",
                 palette: .full
             )
 

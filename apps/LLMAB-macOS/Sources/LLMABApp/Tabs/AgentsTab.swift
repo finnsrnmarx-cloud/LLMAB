@@ -12,7 +12,7 @@ struct AgentsTab: View {
 
             PlaceholderCard(
                 title: "Ships in chunk 12",
-                body: "Tool loop: read_file, write_file, run_shell (allowlist + per-command consent), web_search (opt-in DuckDuckGo), list_dir. Uses Gemma 4's native function-calling and optional thinking mode. Every in-flight tool call shows its own AuroraRing beside the tool name.",
+                message: "Tool loop: read_file, write_file, run_shell (allowlist + per-command consent), web_search (opt-in DuckDuckGo), list_dir. Uses Gemma 4's native function-calling and optional thinking mode. Every in-flight tool call shows its own AuroraRing beside the tool name.",
                 palette: .full
             )
 

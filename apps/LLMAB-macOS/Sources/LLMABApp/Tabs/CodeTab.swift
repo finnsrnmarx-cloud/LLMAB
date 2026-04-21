@@ -16,7 +16,7 @@ struct CodeTab: View {
 
             PlaceholderCard(
                 title: "Ships in chunk 11",
-                body: "Security-scoped folder picker → aurora-striped file tree → streaming bug-fix / refactor / summary panel. \"Apply suggestion\" writes via the bookmark, never via a sandboxed daemon.",
+                message: "Security-scoped folder picker → aurora-striped file tree → streaming bug-fix / refactor / summary panel. \"Apply suggestion\" writes via the bookmark, never via a sandboxed daemon.",
                 palette: .code
             )
 

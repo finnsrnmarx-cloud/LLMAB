@@ -30,7 +30,7 @@ struct ChatTab: View {
 
             PlaceholderCard(
                 title: "Ships in chunk 8–10",
-                body: "Text streaming → Gemma 4 via Ollama (chunk 8). Dictate + TTS via Apple Speech + AVSpeechSynthesizer (chunk 9). Image+text upload (chunk 10). Create-image gates on a detected diffusion model (chunk 15).",
+                message: "Text streaming → Gemma 4 via Ollama (chunk 8). Dictate + TTS via Apple Speech + AVSpeechSynthesizer (chunk 9). Image+text upload (chunk 10). Create-image gates on a detected diffusion model (chunk 15).",
                 palette: .full
             )
 

@@ -44,7 +44,7 @@ struct TabHeader: View {
 /// even in its stub state.
 struct PlaceholderCard: View {
     let title: String
-    let body: String
+    let message: String
     let palette: AuroraGradient.Palette
 
     var body: some View {
@@ -55,7 +55,7 @@ struct PlaceholderCard: View {
                     .font(.system(.headline, design: .rounded))
                     .foregroundStyle(Midnight.mist)
             }
-            Text(body)
+            Text(message)
                 .font(.system(.body))
                 .foregroundStyle(Midnight.fog)
                 .lineLimit(nil)
