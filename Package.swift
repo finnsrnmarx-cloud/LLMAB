@@ -101,7 +101,11 @@ let package = Package(
                 "AgentKit",
                 "MediaKit"
             ],
-            path: "apps/LLMAB-macOS/Sources/LLMABApp"
+            path: "apps/LLMAB-macOS/Sources/LLMABApp",
+            linkerSettings: [
+                .linkedFramework("SwiftUI", .when(platforms: [.macOS])),
+                .linkedFramework("AppKit",  .when(platforms: [.macOS]))
+            ]
         )
     ]
 )
