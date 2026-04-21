@@ -1,6 +1,7 @@
 import SwiftUI
 import LLMCore
 import UIKitOmega
+import UniformTypeIdentifiers
 
 /// Scrolling message list + composer. The view model is injected from
 /// ChatTab so that both ChatConversationView and DictateView share a single
@@ -126,29 +127,37 @@ struct ChatConversationView: View {
 
     // MARK: - Composer
 
-    private var composer: some View {
-        HStack(alignment: .bottom, spacing: 10) {
-            TextField("message…", text: $vm.input, axis: .vertical)
-                .textFieldStyle(.plain)
-                .font(.system(.body, design: .default))
-                .foregroundStyle(Midnight.mist)
-                .lineLimit(1...6)
-                .onSubmit { vm.send() }
+    @State private var isPickingImage: Bool = false
 
-            if vm.isStreaming {
-                Button(action: vm.cancel) {
-                    OmegaSpinner(size: 22)
+    private var composer: some View {
+        VStack(spacing: 8) {
+            if !vm.pendingAttachments.isEmpty {
+                attachmentStrip
+            }
+            HStack(alignment: .bottom, spacing: 10) {
+                attachButton
+                TextField("message…", text: $vm.input, axis: .vertical)
+                    .textFieldStyle(.plain)
+                    .font(.system(.body, design: .default))
+                    .foregroundStyle(Midnight.mist)
+                    .lineLimit(1...6)
+                    .onSubmit { vm.send() }
+
+                if vm.isStreaming {
+                    Button(action: vm.cancel) {
+                        OmegaSpinner(size: 22)
+                    }
+                    .buttonStyle(.plain)
+                    .help("cancel streaming")
+                } else {
+                    Button(action: vm.send) {
+                        OmegaMark(size: 22, animated: !vm.input.isEmpty || !vm.pendingAttachments.isEmpty)
+                            .opacity(isSendDisabled ? 0.35 : 1.0)
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(isSendDisabled)
+                    .keyboardShortcut(.return, modifiers: [.command])
                 }
-                .buttonStyle(.plain)
-                .help("cancel streaming")
-            } else {
-                Button(action: vm.send) {
-                    OmegaMark(size: 22, animated: !vm.input.isEmpty)
-                        .opacity(vm.input.isEmpty ? 0.35 : 1.0)
-                }
-                .buttonStyle(.plain)
-                .disabled(vm.input.isEmpty || store.selectedModelId == nil)
-                .keyboardShortcut(.return, modifiers: [.command])
             }
         }
         .padding(.horizontal, 16)
@@ -160,5 +169,113 @@ struct ChatConversationView: View {
                 .frame(height: 1)
                 .opacity(0.35)
         }
+        .fileImporter(
+            isPresented: $isPickingImage,
+            allowedContentTypes: [.png, .jpeg, .heic, .gif, .webP, .tiff],
+            allowsMultipleSelection: true
+        ) { result in
+            handlePickResult(result)
+        }
+    }
+
+    private var attachButton: some View {
+        Button {
+            isPickingImage = true
+        } label: {
+            Image(systemName: "paperclip")
+                .font(.system(size: 16, weight: .medium))
+                .foregroundStyle(AuroraGradient.linear(.full))
+        }
+        .buttonStyle(.plain)
+        .disabled(!canAttachImages)
+        .help(canAttachImages ? "attach image(s)" : "selected model does not accept images")
+    }
+
+    private var attachmentStrip: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(vm.pendingAttachments) { a in
+                    AttachmentChip(attachment: a) {
+                        vm.removeAttachment(a.id)
+                    }
+                }
+            }
+            .padding(.horizontal, 4)
+        }
+    }
+
+    private var isSendDisabled: Bool {
+        (vm.input.isEmpty && vm.pendingAttachments.isEmpty) || store.selectedModelId == nil
+    }
+
+    private var canAttachImages: Bool {
+        guard let id = store.selectedModelId,
+              let info = store.snapshot?.models.first(where: { $0.id == id }) else {
+            return false
+        }
+        return info.capabilities.imageIn
+    }
+
+    private func handlePickResult(_ result: Result<[URL], Error>) {
+        guard case .success(let urls) = result else { return }
+        Task { @MainActor in
+            for url in urls {
+                guard url.startAccessingSecurityScopedResource() else { continue }
+                defer { url.stopAccessingSecurityScopedResource() }
+                guard let data = try? Data(contentsOf: url) else { continue }
+                let mime = mimeType(for: url)
+                await vm.attachImage(
+                    data: data,
+                    mimeType: mime,
+                    filename: url.lastPathComponent
+                )
+            }
+        }
+    }
+
+    private func mimeType(for url: URL) -> String {
+        switch url.pathExtension.lowercased() {
+        case "jpg", "jpeg": return "image/jpeg"
+        case "heic":         return "image/heic"
+        case "gif":          return "image/gif"
+        case "webp":         return "image/webp"
+        case "tiff", "tif":  return "image/tiff"
+        default:             return "image/png"
+        }
+    }
+}
+
+// MARK: - AttachmentChip
+
+private struct AttachmentChip: View {
+    let attachment: ImageAttachment
+    let onRemove: () -> Void
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "photo")
+                .font(.system(size: 11))
+                .foregroundStyle(AuroraGradient.linear(.full))
+            Text(attachment.shortLabel)
+                .font(.system(.caption, design: .monospaced))
+                .foregroundStyle(Midnight.mist)
+                .lineLimit(1)
+                .frame(maxWidth: 180)
+            Button(action: onRemove) {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.system(size: 11))
+                    .foregroundStyle(Midnight.fog)
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 6)
+        .background(Midnight.navy)
+        .clipShape(Capsule())
+        .overlay(
+            Capsule()
+                .stroke(AuroraGradient.linear(.full), lineWidth: 0.8)
+                .opacity(0.5)
+        )
     }
 }

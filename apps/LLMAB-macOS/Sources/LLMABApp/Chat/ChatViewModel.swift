@@ -15,6 +15,10 @@ final class ChatViewModel: ObservableObject {
     /// Composer text.
     @Published var input: String = ""
 
+    /// Images queued to accompany the next user turn (displayed as chips
+    /// above the composer). Cleared on send or via `removeAttachment`.
+    @Published var pendingAttachments: [ImageAttachment] = []
+
     /// True while any token / tool-call is arriving.
     @Published private(set) var isStreaming: Bool = false
 
@@ -31,18 +35,50 @@ final class ChatViewModel: ObservableObject {
 
     func send() {
         let prompt = input.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !prompt.isEmpty, !isStreaming else { return }
-        input = ""
-        lastError = nil
+        let hasAttachments = !pendingAttachments.isEmpty
+        guard (!prompt.isEmpty || hasAttachments), !isStreaming else { return }
 
-        let userTurn = Message.user(prompt)
+        var parts: [ContentPart] = []
+        for attachment in pendingAttachments {
+            parts.append(.image(attachment.data, mimeType: attachment.mimeType))
+        }
+        if !prompt.isEmpty {
+            parts.append(.text(prompt))
+        }
+
+        let userTurn = Message(role: .user, parts: parts)
         let assistantTurn = Message.assistant("")
         turns.append(userTurn)
         turns.append(assistantTurn)
 
+        input = ""
+        pendingAttachments = []
+        lastError = nil
+
         streamingTask = Task { [weak self] in
             await self?.runStream(for: assistantTurn.id)
         }
+    }
+
+    /// Queue an image for the next send. The image is decoded into raw bytes
+    /// in the requested mimeType so the runtime adapter can pass it straight
+    /// through. Rejects silently (with lastError) if the active model can't
+    /// accept images.
+    func attachImage(data: Data, mimeType: String, filename: String? = nil) async {
+        guard let store else { return }
+        if let resolved = await store.selected, !resolved.info.capabilities.imageIn {
+            lastError = "\(resolved.info.displayName) does not accept images"
+            return
+        }
+        pendingAttachments.append(ImageAttachment(
+            data: data,
+            mimeType: mimeType,
+            filename: filename
+        ))
+    }
+
+    func removeAttachment(_ id: UUID) {
+        pendingAttachments.removeAll { $0.id == id }
     }
 
     func cancel() {

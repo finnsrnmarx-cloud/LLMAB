@@ -44,12 +44,22 @@ struct ChatTab: View {
                     )
                     Spacer()
                 case .image:
-                    PlaceholderCard(
-                        title: "Ships in chunk 10",
-                        message: "Upload an image, ask about it. Any Gemma 4 variant accepts image-in.",
-                        palette: .full
-                    )
-                    Spacer()
+                    // Image upload is integrated into the composer in every
+                    // mode; the dedicated `.image` mode is a nudge / affordance
+                    // that routes the user to the same conversation view with
+                    // a hint banner.
+                    VStack(alignment: .leading, spacing: 10) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "photo.on.rectangle.angled")
+                                .font(.system(size: 14))
+                                .foregroundStyle(AuroraGradient.linear(.full))
+                            Text("tap the paperclip in the composer to attach images")
+                                .font(.system(.footnote, design: .monospaced))
+                                .foregroundStyle(Midnight.fog)
+                        }
+                        .padding(.horizontal, 24)
+                        ChatConversationView(chat: chat)
+                    }
                 case .create:
                     PlaceholderCard(
                         title: "Feature-gated",

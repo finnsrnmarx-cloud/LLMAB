@@ -2,12 +2,13 @@ import SwiftUI
 import LLMCore
 import MediaKit
 import UIKitOmega
+#if canImport(AppKit)
+import AppKit
+#endif
 
-/// One row in the conversation. User turns sit right-aligned with an
-/// indigo-deep background; assistant turns sit left-aligned with a slim
-/// aurora-gradient stripe on the leading edge. Assistant turns carry a
-/// speaker button that feeds TTSService; an AuroraRing pulses while
-/// speaking.
+/// One row in the conversation. User turns render image attachments above the
+/// text bubble; assistant turns carry an aurora leading stripe and a TTS
+/// speaker button.
 struct MessageBubble: View {
     @EnvironmentObject private var tts: TTSService
     let message: Message
@@ -29,15 +30,64 @@ struct MessageBubble: View {
     private var userBubble: some View {
         HStack {
             Spacer(minLength: 60)
-            Text(message.textContent)
-                .font(.system(.body))
-                .foregroundStyle(Midnight.mist)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 10)
-                .background(Midnight.navy)
-                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                .textSelection(.enabled)
+            VStack(alignment: .trailing, spacing: 6) {
+                if !userImages.isEmpty {
+                    HStack(spacing: 6) {
+                        ForEach(Array(userImages.enumerated()), id: \.offset) { _, data in
+                            thumbnail(data: data)
+                        }
+                    }
+                }
+                if !message.textContent.isEmpty {
+                    Text(message.textContent)
+                        .font(.system(.body))
+                        .foregroundStyle(Midnight.mist)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 10)
+                        .background(Midnight.navy)
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .textSelection(.enabled)
+                }
+            }
         }
+    }
+
+    private var userImages: [Data] {
+        message.parts.compactMap { part in
+            if case .image(let data, _) = part { return data } else { return nil }
+        }
+    }
+
+    @ViewBuilder
+    private func thumbnail(data: Data) -> some View {
+        #if canImport(AppKit)
+        if let ns = NSImage(data: data) {
+            Image(nsImage: ns)
+                .resizable()
+                .scaledToFill()
+                .frame(width: 120, height: 120)
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .stroke(AuroraGradient.linear(.full), lineWidth: 1)
+                        .opacity(0.4)
+                )
+        } else {
+            fallbackThumb
+        }
+        #else
+        fallbackThumb
+        #endif
+    }
+
+    private var fallbackThumb: some View {
+        RoundedRectangle(cornerRadius: 10, style: .continuous)
+            .fill(Midnight.indigoDeep)
+            .frame(width: 120, height: 120)
+            .overlay(
+                Image(systemName: "photo")
+                    .foregroundStyle(Midnight.fog)
+            )
     }
 
     // MARK: - Assistant
@@ -68,8 +118,6 @@ struct MessageBubble: View {
             Spacer(minLength: 0)
         }
     }
-
-    // MARK: - Speaker button
 
     private var speakerButton: some View {
         Button {
