@@ -70,7 +70,13 @@ let package = Package(
         .target(
             name: "MediaKit",
             dependencies: ["LLMCore"],
-            path: "packages/MediaKit/Sources/MediaKit"
+            path: "packages/MediaKit/Sources/MediaKit",
+            linkerSettings: [
+                .linkedFramework("AVFoundation", .when(platforms: [.macOS, .iOS])),
+                .linkedFramework("Speech",       .when(platforms: [.macOS, .iOS])),
+                .linkedFramework("CoreImage",    .when(platforms: [.macOS, .iOS])),
+                .linkedFramework("AppKit",       .when(platforms: [.macOS]))
+            ]
         ),
         .target(
             name: "UIKitOmega",
