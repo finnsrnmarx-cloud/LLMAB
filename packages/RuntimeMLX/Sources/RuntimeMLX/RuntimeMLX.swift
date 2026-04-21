@@ -21,8 +21,8 @@ public final class MLXRuntime: LLMRuntime, @unchecked Sendable {
     private let mlxBinary: URL?
     private let cacheRoot: URL
 
-    public init(mlxBinary: URL? = Self.findMLXBinary(),
-                cacheRoot: URL = Self.defaultCacheRoot()) {
+    public init(mlxBinary: URL? = MLXRuntime.findMLXBinary(),
+                cacheRoot: URL = MLXRuntime.defaultCacheRoot()) {
         self.mlxBinary = mlxBinary
         self.cacheRoot = cacheRoot
     }
@@ -49,8 +49,7 @@ public final class MLXRuntime: LLMRuntime, @unchecked Sendable {
         return mlxDirs.map { dir in
             let raw = String(dir.lastPathComponent.dropFirst("models--".count))
                 .replacingOccurrences(of: "--", with: "/")
-            let sizeBytes = try? FileManager.default
-                .attributesOfItem(atPath: dir.path)[.size] as? Int64
+            let sizeBytes = Self.fileSize(at: dir)
             let (family, variant) = Self.parseFamily(from: raw.lowercased())
             return ModelInfo(
                 id: "\(RuntimeMLX.id):\(raw)",
@@ -173,5 +172,15 @@ public final class MLXRuntime: LLMRuntime, @unchecked Sendable {
     public static func defaultCacheRoot() -> URL {
         let home = FileManager.default.homeDirectoryForCurrentUser
         return home.appendingPathComponent(".cache/huggingface")
+    }
+
+    /// Best-effort size lookup. Returns nil if the attributes read throws or
+    /// the size key isn't an Int64. Written as a separate helper so the call
+    /// site doesn't get tripped up by `try? … as? …` double-optional rules.
+    static func fileSize(at url: URL) -> Int64? {
+        guard let attrs = try? FileManager.default.attributesOfItem(atPath: url.path) else {
+            return nil
+        }
+        return attrs[.size] as? Int64
     }
 }
