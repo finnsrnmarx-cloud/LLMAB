@@ -2,7 +2,8 @@ import SwiftUI
 import UIKitOmega
 
 /// Primary tab — default on launch. Sub-modes live inside a segmented picker
-/// (Live, Chat, Dictate, Image, Create-image). Real wiring starts in chunk 8.
+/// (Live, Chat, Dictate, Image, Create-image). Typed Chat is live in chunk 8;
+/// remaining sub-modes come online in chunks 9–15.
 struct ChatTab: View {
     enum Mode: String, CaseIterable, Identifiable {
         case live = "Live"
@@ -28,13 +29,40 @@ struct ChatTab: View {
             .pickerStyle(.segmented)
             .padding(.horizontal, 24)
 
-            PlaceholderCard(
-                title: "Ships in chunk 8–10",
-                message: "Text streaming → Gemma 4 via Ollama (chunk 8). Dictate + TTS via Apple Speech + AVSpeechSynthesizer (chunk 9). Image+text upload (chunk 10). Create-image gates on a detected diffusion model (chunk 15).",
-                palette: .full
-            )
-
-            Spacer()
+            Group {
+                switch mode {
+                case .chat:
+                    ChatConversationView()
+                case .live:
+                    PlaceholderCard(
+                        title: "Ships in chunk 9",
+                        message: "Live conversation: continuous mic → Gemma 4 E → AVSpeechSynthesizer out. Requires an audio-capable model (E2B / E4B).",
+                        palette: .full
+                    )
+                    Spacer()
+                case .dictate:
+                    PlaceholderCard(
+                        title: "Ships in chunk 9",
+                        message: "Press-to-talk dictation via Apple Speech framework. Transcribed text lands in the composer; you edit and send.",
+                        palette: .full
+                    )
+                    Spacer()
+                case .image:
+                    PlaceholderCard(
+                        title: "Ships in chunk 10",
+                        message: "Upload an image, ask about it. Any Gemma 4 variant accepts image-in.",
+                        palette: .full
+                    )
+                    Spacer()
+                case .create:
+                    PlaceholderCard(
+                        title: "Feature-gated",
+                        message: "Create-image is hidden until a diffusion model (FLUX / SDXL / Stable Diffusion) is detected. Install one via Ollama and return to Settings to enable.",
+                        palette: .full
+                    )
+                    Spacer()
+                }
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
