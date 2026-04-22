@@ -22,6 +22,7 @@ struct TabHeader: View {
         HStack(alignment: .firstTextBaseline, spacing: 12) {
             Text(title)
                 .font(.system(.largeTitle, design: .rounded).weight(.bold))
+                .tracking(-0.5)
                 .foregroundStyle(AuroraGradient.linear(palette))
             if showSpinner {
                 OmegaSpinner(size: 20, palette: palette)
@@ -29,7 +30,7 @@ struct TabHeader: View {
             Spacer()
             if !subtitle.isEmpty {
                 Text(subtitle)
-                    .font(.system(.caption, design: .monospaced))
+                    .font(Typography.meta)
                     .foregroundStyle(Midnight.fog)
             }
         }
@@ -52,11 +53,11 @@ struct PlaceholderCard: View {
             HStack(spacing: 10) {
                 AuroraRing(size: 18, lineWidth: 2, state: .running, palette: palette)
                 Text(title)
-                    .font(.system(.headline, design: .rounded))
+                    .font(Typography.title)
                     .foregroundStyle(Midnight.mist)
             }
             Text(message)
-                .font(.system(.body))
+                .font(Typography.body)
                 .foregroundStyle(Midnight.fog)
                 .lineLimit(nil)
                 .fixedSize(horizontal: false, vertical: true)
