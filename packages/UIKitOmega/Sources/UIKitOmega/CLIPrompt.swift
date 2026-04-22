@@ -33,7 +33,7 @@ public struct CLIPrompt: View {
 
             TextField(placeholder, text: $text)
                 .textFieldStyle(.plain)
-                .font(.system(.body, design: .monospaced))
+                .font(Typography.monoLarge)
                 .foregroundStyle(Midnight.mist)
                 .onSubmit(onSubmit)
 
