@@ -33,10 +33,11 @@ struct RootView: View {
     @ViewBuilder
     private var tabContent: some View {
         switch selection {
-        case .code:   CodeTab()
-        case .chat:   ChatTab()
-        case .agents: AgentsTab()
-        case .video:  VideoTab()
+        case .code:     CodeTab()
+        case .chat:     ChatTab()
+        case .agents:   AgentsTab()
+        case .video:    VideoTab()
+        case .settings: SettingsTab()
         }
     }
 }
@@ -72,10 +73,15 @@ private struct TitleBar: View {
 private struct TabRail: View {
     @Binding var selection: TabKind
 
+    /// Primary tabs (content creation / agents). Sit in the top group.
+    private var primaryTabs: [TabKind] {
+        TabKind.allCases.filter { $0 != .settings }
+    }
+
     var body: some View {
         VStack(spacing: 6) {
             Spacer().frame(height: 40)  // leave room for title bar
-            ForEach(TabKind.allCases) { tab in
+            ForEach(primaryTabs) { tab in
                 RailButton(
                     kind: tab,
                     isSelected: selection == tab,
@@ -83,6 +89,12 @@ private struct TabRail: View {
                 )
             }
             Spacer()
+            // Settings pinned to the bottom so the content tabs stay grouped.
+            RailButton(
+                kind: .settings,
+                isSelected: selection == .settings,
+                action: { selection = .settings }
+            )
         }
         .padding(.vertical, 8)
     }
