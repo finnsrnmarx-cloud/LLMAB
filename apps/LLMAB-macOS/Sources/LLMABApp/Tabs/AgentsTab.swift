@@ -98,8 +98,10 @@ private struct AgentsTabContent: View {
                     if vm.turns.isEmpty {
                         emptyState
                     } else {
-                        ForEach(vm.turns) { turn in
-                            AgentTranscriptRow(turn: turn).id(turn.id)
+                        let numbered = Self.numberTurns(vm.turns)
+                        ForEach(numbered, id: \.turn.id) { pair in
+                            AgentTranscriptRow(turn: pair.turn, stepNumber: pair.step)
+                                .id(pair.turn.id)
                         }
                     }
                 }
@@ -115,24 +117,88 @@ private struct AgentsTabContent: View {
         }
     }
 
+    /// Walk the transcript and assign a monotonic step number to every
+    /// tool call / result / error pair. Assistant text and notes get `nil`
+    /// (no number chip shown). A tool result reuses the step of its
+    /// preceding tool call so the two rows are visually linked.
+    private static func numberTurns(_ turns: [AgentsTabViewModel.Turn])
+        -> [(turn: AgentsTabViewModel.Turn, step: Int?)]
+    {
+        var step = 0
+        var result: [(AgentsTabViewModel.Turn, Int?)] = []
+        var lastCallStep: Int?
+        for t in turns {
+            switch t.kind {
+            case .toolCall:
+                step += 1
+                lastCallStep = step
+                result.append((t, step))
+            case .toolResult, .toolError:
+                result.append((t, lastCallStep ?? step))
+            case .assistant, .note:
+                result.append((t, nil))
+            }
+        }
+        return result
+    }
+
     private var emptyState: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 14) {
             HStack(spacing: 8) {
                 OmegaMark(size: 18, animated: true)
                 Text("give ω a task")
                     .font(.system(.title3, design: .rounded).weight(.medium))
                     .foregroundStyle(Midnight.mist)
             }
-            Text("""
-            Examples: "summarise every .md file in ~/code/repo", "find the \
-            biggest file in Downloads", "run swift test in the workspace". \
-            Every shell call pauses for your approval.
-            """)
+            Text("Every shell call pauses for your approval. Click an example to seed the prompt:")
                 .font(.system(.footnote, design: .monospaced))
                 .foregroundStyle(Midnight.fog)
+
+            // Ideas: one-click prompt seeds. Full-width stack so each idea
+            // reads cleanly without horizontal truncation.
+            VStack(alignment: .leading, spacing: 6) {
+                ForEach(Self.examplePrompts, id: \.self) { prompt in
+                    Button {
+                        vm.input = prompt
+                    } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: "sparkles")
+                                .font(.system(size: 10))
+                                .foregroundStyle(AuroraGradient.linear(.full))
+                            Text(prompt)
+                                .font(.system(.caption2, design: .monospaced))
+                                .foregroundStyle(Midnight.mist)
+                                .multilineTextAlignment(.leading)
+                            Spacer()
+                        }
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(Midnight.indigoDeep)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .stroke(AuroraGradient.linear(.full), lineWidth: 0.6)
+                                .opacity(0.35)
+                        )
+                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+                    .help("tap to fill the prompt")
+                }
+            }
         }
         .padding(.top, 36)
     }
+
+    /// Example prompts surfaced when the transcript is empty. Curated to
+    /// exercise each tool without touching anything destructive.
+    static let examplePrompts: [String] = [
+        "List the 5 largest files in ~/Downloads.",
+        "Summarise every .md file in ~/code — one paragraph each.",
+        "Write a sonnet about the Gemma 4 family and save it to ~/Desktop/gemma.txt.",
+        "Run `swift test` in the current workspace and tell me what failed.",
+        "Find every TODO comment in the repo I have open in Code tab and list them.",
+        "Draft a shell command to compress every .log file older than 7 days in ~/Library/Logs — don't run it, just show me."
+    ]
 
     // MARK: - Composer
 
