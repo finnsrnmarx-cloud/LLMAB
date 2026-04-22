@@ -185,10 +185,22 @@ struct ChatConversationView: View {
             Image(systemName: "paperclip")
                 .font(.system(size: 16, weight: .medium))
                 .foregroundStyle(AuroraGradient.linear(.full))
+                .opacity(canAttachImages ? 1.0 : 0.55)
         }
         .buttonStyle(.plain)
-        .disabled(!canAttachImages)
-        .help(canAttachImages ? "attach image(s)" : "selected model does not accept images")
+        .help(attachHelp)
+    }
+
+    /// Hint surfaced as the button's tooltip. We always let the user pick —
+    /// even when no model is selected or the chosen model can't accept
+    /// images — so the chip queues and they can swap models after.
+    private var attachHelp: String {
+        if store.selectedModelId == nil {
+            return "attach image(s) — pick a model in Settings before sending"
+        }
+        return canAttachImages
+            ? "attach image(s)"
+            : "attach image(s) — current model is text-only, image will be ignored on send"
     }
 
     private var attachmentStrip: some View {

@@ -62,19 +62,17 @@ final class ChatViewModel: ObservableObject {
 
     /// Queue an image for the next send. The image is decoded into raw bytes
     /// in the requested mimeType so the runtime adapter can pass it straight
-    /// through. Rejects silently (with lastError) if the active model can't
-    /// accept images.
+    /// through. We always queue the attachment regardless of whether a model
+    /// is selected or supports images — the user can change model after,
+    /// and send() surfaces a clear error at commit time if the final model
+    /// doesn't accept images.
     func attachImage(data: Data, mimeType: String, filename: String? = nil) async {
-        guard let store else { return }
-        if let resolved = await store.selected, !resolved.info.capabilities.imageIn {
-            lastError = "\(resolved.info.displayName) does not accept images"
-            return
-        }
         pendingAttachments.append(ImageAttachment(
             data: data,
             mimeType: mimeType,
             filename: filename
         ))
+        lastError = nil
     }
 
     func removeAttachment(_ id: UUID) {
@@ -100,6 +98,23 @@ final class ChatViewModel: ObservableObject {
         guard info.capabilities.textOut else {
             fail(assistantId: assistantId, message: "\(info.displayName) does not emit text")
             return
+        }
+
+        // If the user turn immediately preceding this assistant placeholder
+        // carries image parts but the active model can't accept images, bail
+        // now with a clear message rather than silently dropping the image
+        // downstream in the adapter.
+        if let assistantIdx = turns.firstIndex(where: { $0.id == assistantId }),
+           assistantIdx > 0 {
+            let userTurn = turns[assistantIdx - 1]
+            let hasImage = userTurn.parts.contains {
+                if case .image = $0 { return true } else { return false }
+            }
+            if hasImage, !info.capabilities.imageIn {
+                fail(assistantId: assistantId,
+                     message: "\(info.displayName) does not accept images — remove the attachment or switch model")
+                return
+            }
         }
 
         let request = ChatRequest(

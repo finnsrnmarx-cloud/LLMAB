@@ -1,20 +1,19 @@
 {
   "name": "ω aurora",
-  "description": "Full-spectrum fusion gradient. Stops bleed into each other; ordered for a smooth 1-turn-per-2s rotation.",
+  "description": "Desaturated Google-fade: blue → green → yellow → red, with pink + purple tail. Reads as a soft glow rather than a neon rainbow. 1 full turn every 2 s.",
   "stops": [
-    { "position": 0.00, "hex": "#FF3B6B", "role": "rose" },
-    { "position": 0.14, "hex": "#FF8A3D", "role": "orange" },
-    { "position": 0.28, "hex": "#FFD23D", "role": "amber" },
-    { "position": 0.42, "hex": "#4DE28C", "role": "green" },
-    { "position": 0.56, "hex": "#3BC6FF", "role": "cyan" },
-    { "position": 0.70, "hex": "#7A5CFF", "role": "violet" },
-    { "position": 0.84, "hex": "#C94BFF", "role": "magenta" },
-    { "position": 1.00, "hex": "#FF3B6B", "role": "rose" }
+    { "position": 0.00, "hex": "#5B8FD9", "role": "blue"    },
+    { "position": 0.18, "hex": "#5FB074", "role": "green"   },
+    { "position": 0.36, "hex": "#E8C470", "role": "yellow"  },
+    { "position": 0.54, "hex": "#D86A6A", "role": "red"     },
+    { "position": 0.72, "hex": "#D48BB8", "role": "pink"    },
+    { "position": 0.88, "hex": "#9B7BC7", "role": "purple"  },
+    { "position": 1.00, "hex": "#5B8FD9", "role": "blue"    }
   ],
   "codeStops": [
-    { "position": 0.00, "hex": "#3BC6FF", "role": "cyan" },
-    { "position": 0.33, "hex": "#4DE2D6", "role": "teal" },
-    { "position": 0.66, "hex": "#7A5CFF", "role": "indigo" },
-    { "position": 1.00, "hex": "#C94BFF", "role": "violet" }
+    { "position": 0.00, "hex": "#5B8FD9", "role": "blue"   },
+    { "position": 0.33, "hex": "#68B8B0", "role": "teal"   },
+    { "position": 0.66, "hex": "#5FB074", "role": "green"  },
+    { "position": 1.00, "hex": "#9B7BC7", "role": "purple" }
   ]
 }
