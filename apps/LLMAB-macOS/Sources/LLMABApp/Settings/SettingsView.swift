@@ -14,7 +14,7 @@ struct SettingsView: View {
     @EnvironmentObject private var store: AppStore
     @EnvironmentObject private var tts: TTSService
 
-    @State private var pullModelName: String = "gemma-4:e4b"
+    @State private var pullModelName: String = "gemma-4:26b-a4b"
     @State private var pullProgress: PullProgress?
     @State private var isPulling: Bool = false
     @State private var pullError: String?
@@ -126,7 +126,7 @@ struct SettingsView: View {
                     modelRow(m)
                 }
             } else {
-                Text("no local models — pull one below, or `ollama pull gemma-4:e4b` in a terminal")
+                Text("no local models — start a runtime (Ollama / llama-server / mlx_lm) and hit rescan, or pull via the form below")
                     .font(.system(.caption, design: .monospaced))
                     .foregroundStyle(Midnight.fog)
             }
@@ -202,8 +202,12 @@ struct SettingsView: View {
     private var pullSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             sectionTitle("pull a model (Ollama)")
+            Text("Only applies to Ollama. For llama.cpp, start `llama-server` against your GGUF and hit rescan — the model auto-appears above. For MLX, place weights under ~/.cache/huggingface/hub/models--mlx-community--*.")
+                .font(.system(.caption2, design: .monospaced))
+                .foregroundStyle(Midnight.fog)
+                .fixedSize(horizontal: false, vertical: true)
             HStack(spacing: 8) {
-                TextField("gemma-4:e4b", text: $pullModelName)
+                TextField("gemma-4:26b-a4b", text: $pullModelName)
                     .textFieldStyle(.plain)
                     .font(.system(.body, design: .monospaced))
                     .foregroundStyle(Midnight.mist)
