@@ -3,19 +3,75 @@ import LLMCore
 import ModelRegistry
 import SwiftUI
 
-/// App-wide shared state: the registry, the snapshot, and the chosen model.
-/// Every tab's view-model reads the selected model from here.
+/// App-wide shared state: the registry, the snapshot, the chosen model, and —
+/// critically for cross-tab memory — the long-lived view-models for Chat,
+/// Code, and Agents. Video intentionally keeps its VM local to the tab
+/// because the live camera session must restart with the view anyway.
+///
+/// Each long-lived VM persists its state via `PersistenceStore` so tab
+/// switches, app relaunches, and even crashes don't blow away the
+/// conversation.
 @MainActor
 final class AppStore: ObservableObject {
 
     let registry: ModelRegistry
+    let persistence: PersistenceStore
 
     @Published private(set) var snapshot: ModelRegistry.Snapshot?
     @Published private(set) var isScanning: Bool = false
-    @Published var selectedModelId: String?
+    @Published var selectedModelId: String? {
+        didSet {
+            guard oldValue != selectedModelId else { return }
+            var s = persistedSettings
+            s.selectedModelId = selectedModelId
+            persistedSettings = s
+            persistence.save(s, forKey: PersistenceKeys.settings)
+        }
+    }
+    @Published var ttsVoiceIdentifier: String? {
+        didSet {
+            guard oldValue != ttsVoiceIdentifier else { return }
+            var s = persistedSettings
+            s.ttsVoiceIdentifier = ttsVoiceIdentifier
+            persistedSettings = s
+            persistence.save(s, forKey: PersistenceKeys.settings)
+        }
+    }
 
-    init(registry: ModelRegistry = ModelRegistry()) {
+    /// Long-lived view-models, constructed once and handed out via
+    /// EnvironmentObject so every tab reuses the same instance.
+    let chatVM: ChatViewModel
+    let codeVM: CodeTabViewModel
+    let agentsVM: AgentsTabViewModel
+
+    /// Cached copy of the Settings payload so we don't lose unchanged fields
+    /// when persisting a single update.
+    private var persistedSettings: SettingsPersistedState
+
+    init(registry: ModelRegistry = ModelRegistry(),
+         persistence: PersistenceStore = .shared) {
         self.registry = registry
+        self.persistence = persistence
+
+        // Rehydrate settings before building VMs — selectedModelId needs to
+        // be set before the Chat VM starts streaming, otherwise autoPick
+        // will overwrite it.
+        let settings = persistence.load(SettingsPersistedState.self,
+                                        forKey: PersistenceKeys.settings)
+            ?? SettingsPersistedState()
+        self.persistedSettings = settings
+        self.selectedModelId = settings.selectedModelId
+        self.ttsVoiceIdentifier = settings.ttsVoiceIdentifier
+
+        // Construct VMs with their persisted state.
+        self.chatVM   = ChatViewModel(persistence: persistence)
+        self.codeVM   = CodeTabViewModel(persistence: persistence)
+        self.agentsVM = AgentsTabViewModel(persistence: persistence)
+
+        // Wire VMs to this store so they can look up the selected model.
+        self.chatVM.bind(to: self)
+        self.codeVM.bind(to: self)
+        self.agentsVM.bind(to: self)
     }
 
     /// Resolve the currently-selected model (runtime + info). Nil if nothing
@@ -51,5 +107,14 @@ final class AppStore: ObservableObject {
             return gemma.id
         }
         return snap.models.first?.id
+    }
+
+    /// Force-flush every VM's state to disk. Call from `applicationWillTerminate`
+    /// or similar teardown points to ensure no in-flight debounces drop.
+    func flushPersistence() {
+        chatVM.flushPersistence()
+        codeVM.flushPersistence()
+        agentsVM.flushPersistence()
+        persistence.saveNow(persistedSettings, forKey: PersistenceKeys.settings)
     }
 }

@@ -8,7 +8,18 @@ import UniformTypeIdentifiers
 /// indigo → violet), monospace.
 struct CodeTab: View {
     @EnvironmentObject private var store: AppStore
-    @StateObject private var vm = CodeTabViewModel()
+
+    var body: some View {
+        CodeTabContent(vm: store.codeVM)
+    }
+}
+
+/// Inner view observes the shared CodeTabViewModel so SwiftUI re-renders on
+/// tree expansion / selection / analysis streaming. See AgentsTab for the
+/// same rationale.
+private struct CodeTabContent: View {
+    @EnvironmentObject private var store: AppStore
+    @ObservedObject var vm: CodeTabViewModel
     @State private var isPickingFolder: Bool = false
 
     var body: some View {
@@ -42,7 +53,7 @@ struct CodeTab: View {
             .background(Midnight.indigoDeep)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .onAppear { vm.bind(to: store) }
+        // vm is bound in AppStore.init, nothing to do here.
         .fileImporter(
             isPresented: $isPickingFolder,
             allowedContentTypes: [.folder],

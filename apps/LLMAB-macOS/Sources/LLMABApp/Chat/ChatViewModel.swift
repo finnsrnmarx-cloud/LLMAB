@@ -4,16 +4,22 @@ import ModelRegistry
 import SwiftUI
 
 /// State for a single text-mode chat session: the running message list, the
-/// composer, and the streaming task.
+/// composer, and the streaming task. Instances are owned by `AppStore` (not
+/// by the view tree), so the conversation survives tab switches and — via
+/// `PersistenceStore` — app relaunches.
 @MainActor
 final class ChatViewModel: ObservableObject {
 
     /// Turns as they appear in the UI. `.assistant` messages are mutated in
     /// place while streaming.
-    @Published private(set) var turns: [Message] = []
+    @Published private(set) var turns: [Message] = [] {
+        didSet { schedulePersist() }
+    }
 
-    /// Composer text.
-    @Published var input: String = ""
+    /// Composer text. Persisted so a half-typed message survives tab switches.
+    @Published var input: String = "" {
+        didSet { schedulePersist() }
+    }
 
     /// Images queued to accompany the next user turn (displayed as chips
     /// above the composer). Cleared on send or via `removeAttachment`.
@@ -28,8 +34,37 @@ final class ChatViewModel: ObservableObject {
 
     private var streamingTask: Task<Void, Never>?
     private weak var store: AppStore?
+    private let persistence: PersistenceStore
+    private var rehydrating: Bool = false
+
+    init(persistence: PersistenceStore = .shared) {
+        self.persistence = persistence
+        rehydrate()
+    }
 
     func bind(to store: AppStore) { self.store = store }
+
+    private func rehydrate() {
+        guard let saved = persistence.load(ChatPersistedState.self,
+                                           forKey: PersistenceKeys.chat) else {
+            return
+        }
+        rehydrating = true
+        turns = saved.turns
+        input = saved.input
+        rehydrating = false
+    }
+
+    private func schedulePersist() {
+        guard !rehydrating else { return }
+        persistence.save(ChatPersistedState(turns: turns, input: input),
+                         forKey: PersistenceKeys.chat)
+    }
+
+    func flushPersistence() {
+        persistence.saveNow(ChatPersistedState(turns: turns, input: input),
+                            forKey: PersistenceKeys.chat)
+    }
 
     // MARK: - Send
 
@@ -179,4 +214,10 @@ final class ChatViewModel: ObservableObject {
         input = ""
         lastError = nil
     }
+
+    // MARK: - Performance note
+    //
+    // `turns`'s didSet fires on every streamed token (since `append(to:text:)`
+    // reassigns the element at index `idx`). PersistenceStore debounces writes
+    // by 0.4 s, so the actual disk hit is once-per-pause, not per-token.
 }

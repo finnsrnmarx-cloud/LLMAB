@@ -8,11 +8,11 @@ import SwiftUI
 @MainActor
 final class CodeTabViewModel: ObservableObject {
 
-    @Published var root: URL?
+    @Published var root: URL? { didSet { schedulePersist() } }
     @Published var treeChildren: [CodeTreeNode] = []
     @Published var expanded: Set<URL> = []
     @Published var expandedChildren: [URL: [CodeTreeNode]] = [:]
-    @Published var selectedFile: URL?
+    @Published var selectedFile: URL? { didSet { schedulePersist() } }
     @Published var analysis: String = ""
     @Published var isAnalyzing: Bool = false
     @Published var input: String = ""
@@ -20,12 +20,58 @@ final class CodeTabViewModel: ObservableObject {
 
     private weak var store: AppStore?
     private var streamingTask: Task<Void, Never>?
+    private let persistence: PersistenceStore
+    private var rehydrating: Bool = false
 
     /// Max bytes we'll read from a single file before truncating. Keeps huge
     /// files from blowing the context window.
     static let maxFileBytes: Int = 64 * 1024
 
+    init(persistence: PersistenceStore = .shared) {
+        self.persistence = persistence
+        rehydrate()
+    }
+
     func bind(to store: AppStore) { self.store = store }
+
+    private func rehydrate() {
+        guard let saved = persistence.load(CodePersistedState.self,
+                                           forKey: PersistenceKeys.code) else {
+            return
+        }
+        rehydrating = true
+        defer { rehydrating = false }
+        if let rp = saved.rootPath {
+            let url = URL(fileURLWithPath: rp)
+            if FileManager.default.fileExists(atPath: url.path) {
+                root = url
+                treeChildren = CodeTree.children(of: url)
+            }
+        }
+        if let sp = saved.selectedFilePath {
+            let url = URL(fileURLWithPath: sp)
+            if FileManager.default.fileExists(atPath: url.path) {
+                selectedFile = url
+            }
+        }
+    }
+
+    private func schedulePersist() {
+        guard !rehydrating else { return }
+        let payload = CodePersistedState(
+            rootPath: root?.path,
+            selectedFilePath: selectedFile?.path
+        )
+        persistence.save(payload, forKey: PersistenceKeys.code)
+    }
+
+    func flushPersistence() {
+        let payload = CodePersistedState(
+            rootPath: root?.path,
+            selectedFilePath: selectedFile?.path
+        )
+        persistence.saveNow(payload, forKey: PersistenceKeys.code)
+    }
 
     // MARK: - Folder management
 
