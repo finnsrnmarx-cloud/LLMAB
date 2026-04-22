@@ -13,8 +13,9 @@ struct ChatTab: View {
         var id: String { rawValue }
     }
     @State private var mode: Mode = .chat
-    @StateObject private var chat = ChatViewModel()
     @EnvironmentObject private var store: AppStore
+
+    private var chat: ChatViewModel { store.chatVM }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -71,6 +72,5 @@ struct ChatTab: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .onAppear { chat.bind(to: store) }
     }
 }

@@ -36,10 +36,16 @@ final class AgentsTabViewModel: ObservableObject {
         var kind: Kind
     }
 
-    @Published private(set) var turns: [Turn] = []
-    @Published var input: String = ""
+    @Published private(set) var turns: [Turn] = [] {
+        didSet { schedulePersist() }
+    }
+    @Published var input: String = "" {
+        didSet { schedulePersist() }
+    }
     @Published private(set) var isRunning: Bool = false
-    @Published var enableWebSearch: Bool = false
+    @Published var enableWebSearch: Bool = false {
+        didSet { schedulePersist() }
+    }
 
     // MARK: - Consent
 
@@ -55,8 +61,89 @@ final class AgentsTabViewModel: ObservableObject {
 
     private weak var store: AppStore?
     private var sessionTask: Task<Void, Never>?
+    private let persistence: PersistenceStore
+    private var rehydrating: Bool = false
+
+    init(persistence: PersistenceStore = .shared) {
+        self.persistence = persistence
+        rehydrate()
+    }
 
     func bind(to store: AppStore) { self.store = store }
+
+    private func rehydrate() {
+        guard let saved = persistence.load(AgentsPersistedState.self,
+                                           forKey: PersistenceKeys.agents) else {
+            return
+        }
+        rehydrating = true
+        defer { rehydrating = false }
+        turns = saved.turns.map { entry in
+            let kind: Turn.Kind
+            switch entry.kind {
+            case "assistant":
+                kind = .assistant(entry.text ?? "")
+            case "toolCall":
+                kind = .toolCall(toolId: entry.toolId ?? "",
+                                 argumentsJSON: entry.argumentsJSON ?? Data())
+            case "toolResult":
+                kind = .toolResult(toolId: entry.toolId ?? "",
+                                   output: entry.text ?? "")
+            case "toolError":
+                kind = .toolError(toolId: entry.toolId ?? "",
+                                  message: entry.text ?? "")
+            default:
+                kind = .note(entry.text ?? "")
+            }
+            return Turn(kind: kind)
+        }
+        input = saved.input
+        enableWebSearch = saved.enableWebSearch
+    }
+
+    private func schedulePersist() {
+        guard !rehydrating else { return }
+        let entries: [AgentsPersistedState.Entry] = turns.map { turn in
+            switch turn.kind {
+            case .assistant(let s):
+                return .init(kind: "assistant", text: s)
+            case .toolCall(let id, let args):
+                return .init(kind: "toolCall", toolId: id, argumentsJSON: args)
+            case .toolResult(let id, let out):
+                return .init(kind: "toolResult", text: out, toolId: id)
+            case .toolError(let id, let msg):
+                return .init(kind: "toolError", text: msg, toolId: id)
+            case .note(let s):
+                return .init(kind: "note", text: s)
+            }
+        }
+        persistence.save(
+            AgentsPersistedState(turns: entries,
+                                 input: input,
+                                 enableWebSearch: enableWebSearch),
+            forKey: PersistenceKeys.agents
+        )
+    }
+
+    func flushPersistence() {
+        // schedulePersist already debounces; for the shutdown path we want
+        // the synchronous variant.
+        let entries: [AgentsPersistedState.Entry] = turns.map { turn in
+            switch turn.kind {
+            case .assistant(let s):             return .init(kind: "assistant", text: s)
+            case .toolCall(let id, let args):   return .init(kind: "toolCall", toolId: id, argumentsJSON: args)
+            case .toolResult(let id, let out):  return .init(kind: "toolResult", text: out, toolId: id)
+            case .toolError(let id, let msg):   return .init(kind: "toolError", text: msg, toolId: id)
+            case .note(let s):                  return .init(kind: "note", text: s)
+            }
+        }
+        persistence.saveNow(
+            AgentsPersistedState(turns: entries,
+                                 input: input,
+                                 enableWebSearch: enableWebSearch),
+            forKey: PersistenceKeys.agents
+        )
+    }
 
     // MARK: - Run / cancel
 

@@ -2,10 +2,24 @@ import SwiftUI
 import AgentKit
 import UIKitOmega
 
-/// Agents tab — tool-use loop with consent-gated shell.
+/// Agents tab — tool-use loop with consent-gated shell. Outer shell reads
+/// the long-lived view-model from AppStore and hands it to an inner
+/// @ObservedObject subview so SwiftUI actually tracks VM changes. (If we
+/// tried to observe `store.agentsVM` from the outer view directly SwiftUI
+/// wouldn't re-render on `vm.turns`/`vm.isRunning` updates — those are
+/// nested @Published and don't propagate through AppStore's
+/// objectWillChange.)
 struct AgentsTab: View {
     @EnvironmentObject private var store: AppStore
-    @StateObject private var vm = AgentsTabViewModel()
+
+    var body: some View {
+        AgentsTabContent(vm: store.agentsVM)
+    }
+}
+
+private struct AgentsTabContent: View {
+    @EnvironmentObject private var store: AppStore
+    @ObservedObject var vm: AgentsTabViewModel
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -25,7 +39,7 @@ struct AgentsTab: View {
             composer
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .onAppear { vm.bind(to: store) }
+        // vm is bound in AppStore.init.
         .sheet(item: $vm.pendingConsent) { pending in
             ConsentSheet(pending: pending) { allow in
                 vm.resolveConsent(pending.id, allow: allow)

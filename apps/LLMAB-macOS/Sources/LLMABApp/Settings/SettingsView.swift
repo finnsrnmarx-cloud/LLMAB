@@ -18,7 +18,8 @@ struct SettingsView: View {
     @State private var pullProgress: PullProgress?
     @State private var isPulling: Bool = false
     @State private var pullError: String?
-    @State private var selectedVoice: String?
+    // Voice selection is persisted on the store so the choice survives
+    // across tab switches and launches.
 
     private var voices: [String] { TTSService.availableVoices() }
 
@@ -298,14 +299,14 @@ struct SettingsView: View {
                     .font(.system(.caption, design: .monospaced))
                     .foregroundStyle(Midnight.fog)
             } else {
-                Picker("voice", selection: $selectedVoice) {
+                Picker("voice", selection: $store.ttsVoiceIdentifier) {
                     Text("system default").tag(String?.none)
                     ForEach(voices, id: \.self) { v in
                         Text(v).tag(String?.some(v))
                     }
                 }
                 .pickerStyle(.menu)
-                .onChange(of: selectedVoice) { _, new in
+                .onChange(of: store.ttsVoiceIdentifier) { _, new in
                     tts.speak("The quick brown ω jumps over the lazy model.", voice: new)
                 }
             }
