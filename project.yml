@@ -49,18 +49,34 @@ targets:
         PRODUCT_NAME: LLMAB
         INFOPLIST_FILE: apps/LLMAB-macOS/Info.plist
         GENERATE_INFOPLIST_FILE: NO
-        ENABLE_HARDENED_RUNTIME: YES
         # Dock icon: `AppIcon.icns` is generated from
         # assets/brand/app-icon.svg by scripts/make-icon.sh.
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
-        # Ad-hoc sign for dev; `scripts/package.sh` overrides
-        # CODE_SIGN_IDENTITY with the Developer ID cert at release.
-        CODE_SIGN_STYLE: Automatic
-        CODE_SIGN_IDENTITY: "-"
         # Sandbox intentionally off — the Code and Agents tabs need
         # unrestricted filesystem + exec access. A sandboxed MAS
         # variant will land as a separate target post-v1.
         ENABLE_APP_SANDBOX: NO
+        CODE_SIGN_STYLE: Automatic
+        CODE_SIGN_IDENTITY: "-"
+      configs:
+        # Debug (local `make run-app` / Xcode ⌘R):
+        #   - ENABLE_HARDENED_RUNTIME=NO — hardened runtime is a
+        #     notarisation requirement, not a debug one, and combining it
+        #     with ad-hoc `-` identity + Xcode 17's new stub executor is
+        #     known-broken.
+        #   - ENABLE_DEBUG_DYLIB_SUPPORT=NO — turn off Xcode 17's
+        #     "launcher + debug dylib" split that causes the
+        #     "code object is not signed at all" codesign failure on
+        #     the outer MacOS/LLMAB stub. Traditional single-binary
+        #     debug builds sign cleanly.
+        Debug:
+          ENABLE_HARDENED_RUNTIME: NO
+          ENABLE_DEBUG_DYLIB_SUPPORT: NO
+        # Release (make package / xcodebuild archive via scripts/
+        # package.sh): Developer ID signing + hardened runtime on, as
+        # Apple requires for notarised distribution.
+        Release:
+          ENABLE_HARDENED_RUNTIME: YES
     dependencies:
       - package: LLMAB
         product: LLMCore
