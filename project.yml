@@ -32,14 +32,22 @@ targets:
       - path: apps/LLMAB-macOS/Sources/LLMABApp
     resources:
       - path: apps/LLMAB-macOS/Resources
-    info:
-      path: apps/LLMAB-macOS/Info.plist
+    # NOTE: we deliberately do NOT use the `info: path:` key here —
+    # XcodeGen interprets that as "synthesise a fresh Info.plist at
+    # this path at generate time", which would wipe the privacy usage
+    # strings we've painstakingly written (and produce an app that
+    # TCC-crashes the moment the Video tab asks for camera access).
+    # Instead, point xcodebuild at the checked-in file via the
+    # INFOPLIST_FILE build setting below, and keep
+    # GENERATE_INFOPLIST_FILE=NO so the build system doesn't clobber
+    # it at archive time either.
     entitlements:
       path: apps/LLMAB-macOS/LLMAB.entitlements
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: org.llmab.omega
         PRODUCT_NAME: LLMAB
+        INFOPLIST_FILE: apps/LLMAB-macOS/Info.plist
         GENERATE_INFOPLIST_FILE: NO
         ENABLE_HARDENED_RUNTIME: YES
         # Dock icon: `AppIcon.icns` is generated from
