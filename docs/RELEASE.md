@@ -6,6 +6,42 @@ Outside-App-Store distribution: Developer-ID-signed, notarised, stapled,
 DMG-wrapped. This keeps the Code and Agents tabs unsandboxed so they can
 read arbitrary folders and run shell commands under user consent.
 
+## Automated path (GitHub Actions, recommended)
+
+`.github/workflows/release.yml` fires on any `v*` tag push (or via
+Actions → Release (DMG) → Run workflow). It builds, signs, notarises,
+staples, wraps the DMG, and attaches it to a draft GitHub Release for
+the tag.
+
+### One-time: add secrets
+
+Settings → Secrets and variables → Actions → New repository secret.
+
+| Secret | What it is |
+|---|---|
+| `APPLE_DEV_ID_CERT_BASE64`   | `base64 -i DeveloperID.p12 \| pbcopy` — full .p12 export from Keychain Access |
+| `APPLE_DEV_ID_CERT_PASSWORD` | password you set when exporting the .p12 |
+| `APPLE_DEV_ID`               | `Developer ID Application: Your Name (TEAMID)` |
+| `APPLE_TEAM_ID`              | 10-char Apple team id |
+| `APPLE_ID_EMAIL`             | Apple ID email for notarytool |
+| `APPLE_ID_APP_PASSWORD`      | app-specific password from <https://appleid.apple.com> |
+
+### Cut a release
+
+```sh
+# Bump LLMCore.version in packages/LLMCore/Sources/LLMCore/LLMCore.swift
+# and MARKETING_VERSION in project.yml to match.
+git commit -am "release 0.2.0"
+git tag v0.2.0
+git push origin main v0.2.0
+```
+
+The workflow takes 10–15 min (notarization dominates). When it's done,
+open the draft release, review the auto-generated notes, and click
+Publish.
+
+## Manual path (local machine)
+
 ### Prerequisites (one-time)
 
 1. Apple Developer Program membership + 10-char `TEAM_ID`.
@@ -74,8 +110,6 @@ The canonical version string lives at
 
 ## Post-v1 roadmap
 
-- GitHub Action that runs `package.sh` on a release tag and attaches the
-  DMG automatically (chunk 21).
 - Mac App Store variant as a second target in `project.yml`
   (sandboxed, reduced-capability Code and Agents tabs).
 - Sparkle integration for in-app updates.
