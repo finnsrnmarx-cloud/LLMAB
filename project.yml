@@ -32,23 +32,24 @@ targets:
       - path: apps/LLMAB-macOS/Sources/LLMABApp
     resources:
       - path: apps/LLMAB-macOS/Resources
-    # NOTE: we deliberately do NOT use the `info: path:` key here —
-    # XcodeGen interprets that as "synthesise a fresh Info.plist at
-    # this path at generate time", which would wipe the privacy usage
-    # strings we've painstakingly written (and produce an app that
-    # TCC-crashes the moment the Video tab asks for camera access).
-    # Instead, point xcodebuild at the checked-in file via the
-    # INFOPLIST_FILE build setting below, and keep
-    # GENERATE_INFOPLIST_FILE=NO so the build system doesn't clobber
-    # it at archive time either.
-    entitlements:
-      path: apps/LLMAB-macOS/LLMAB.entitlements
+    # NOTE: we deliberately do NOT use the top-level `info: path:` or
+    # `entitlements: path:` keys here — XcodeGen interprets both as
+    # "synthesise a fresh plist at this path at generate time", which
+    # clobbers our carefully-authored files (privacy usage strings in
+    # Info.plist, camera/mic/speech keys in LLMAB.entitlements).
+    # Previous run showed only `get-task-allow` in the signed bundle
+    # because of this — our actual entitlements never shipped.
+    # Instead, point xcodebuild at the checked-in files via the
+    # INFOPLIST_FILE / CODE_SIGN_ENTITLEMENTS build settings below,
+    # and keep GENERATE_INFOPLIST_FILE=NO so the build system doesn't
+    # re-synthesise them at archive time either.
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: org.llmab.omega
         PRODUCT_NAME: LLMAB
         INFOPLIST_FILE: apps/LLMAB-macOS/Info.plist
         GENERATE_INFOPLIST_FILE: NO
+        CODE_SIGN_ENTITLEMENTS: apps/LLMAB-macOS/LLMAB.entitlements
         # Dock icon: `AppIcon.icns` is generated from
         # assets/brand/app-icon.svg by scripts/make-icon.sh.
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
@@ -58,23 +59,24 @@ targets:
         ENABLE_APP_SANDBOX: NO
         CODE_SIGN_STYLE: Automatic
         CODE_SIGN_IDENTITY: "-"
+        # `--deep` makes codesign recursively sign every binary inside
+        # the bundle, including the outer `MacOS/LLMAB` stub launcher
+        # that Xcode 17's debug-dylib pattern leaves adhoc-unsigned
+        # (the root cause of the previous "code object is not signed
+        # at all" error).
+        OTHER_CODE_SIGN_FLAGS: --deep
       configs:
         # Debug (local `make run-app` / Xcode ⌘R):
-        #   - ENABLE_HARDENED_RUNTIME=NO — hardened runtime is a
-        #     notarisation requirement, not a debug one, and combining it
-        #     with ad-hoc `-` identity + Xcode 17's new stub executor is
-        #     known-broken.
-        #   - ENABLE_DEBUG_DYLIB_SUPPORT=NO — turn off Xcode 17's
-        #     "launcher + debug dylib" split that causes the
-        #     "code object is not signed at all" codesign failure on
-        #     the outer MacOS/LLMAB stub. Traditional single-binary
-        #     debug builds sign cleanly.
+        #   - Hardened runtime off (notarisation requirement only).
+        #   - ENABLE_DEBUG_DYLIB / ENABLE_DEBUG_DYLIB_SUPPORT both off —
+        #     Apple renamed the setting between Xcode versions; set both
+        #     to be safe.
         Debug:
           ENABLE_HARDENED_RUNTIME: NO
+          ENABLE_DEBUG_DYLIB: NO
           ENABLE_DEBUG_DYLIB_SUPPORT: NO
         # Release (make package / xcodebuild archive via scripts/
-        # package.sh): Developer ID signing + hardened runtime on, as
-        # Apple requires for notarised distribution.
+        # package.sh): hardened runtime on, as notarisation requires.
         Release:
           ENABLE_HARDENED_RUNTIME: YES
     dependencies:
