@@ -16,6 +16,8 @@ public enum MediaKitError: Error, Sendable, CustomStringConvertible {
     case micPermissionDenied
     case speechPermissionDenied
     case recognizerUnavailable
+    case onDeviceRecognitionUnavailable
+    case alreadyListening
     case audioEngineFailure(String)
     case noAuthorization
 
@@ -24,6 +26,8 @@ public enum MediaKitError: Error, Sendable, CustomStringConvertible {
         case .micPermissionDenied: return "microphone permission denied"
         case .speechPermissionDenied: return "speech-recognition permission denied"
         case .recognizerUnavailable: return "speech recognizer not available on this device"
+        case .onDeviceRecognitionUnavailable: return "on-device speech recognition unavailable (locale likely not downloaded)"
+        case .alreadyListening: return "dictation already in progress"
         case .audioEngineFailure(let s): return "audio engine error: \(s)"
         case .noAuthorization: return "permission must be requested first"
         }

@@ -39,14 +39,14 @@ struct DictateView: View {
         HStack(spacing: 10) {
             if dictation.isListening {
                 AuroraRing(size: 18, lineWidth: 2, state: .running)
-                Text("listening")
+                Text(dictation.usedOnDevice ? "listening · on-device" : "listening · Apple cloud")
                     .font(.system(.footnote, design: .monospaced))
                     .foregroundStyle(Midnight.mist)
             } else {
                 Image(systemName: "waveform")
                     .font(.system(size: 14))
                     .foregroundStyle(Midnight.fog)
-                Text("press and hold ω to dictate")
+                Text("press ω to dictate")
                     .font(.system(.footnote, design: .monospaced))
                     .foregroundStyle(Midnight.fog)
             }
@@ -97,6 +97,15 @@ struct DictateView: View {
             }
         } label: {
             ZStack {
+                // Outer halo — scales with audio level to breathe with voice.
+                Circle()
+                    .strokeBorder(AuroraGradient.angular(.full), lineWidth: 2)
+                    .frame(width: 96, height: 96)
+                    .opacity(dictation.isListening ? 0.25 + Double(dictation.audioLevel) * 0.55 : 0)
+                    .scaleEffect(dictation.isListening ? 1.0 + CGFloat(dictation.audioLevel) * 0.18 : 1.0)
+                    .animation(.easeOut(duration: 0.08), value: dictation.audioLevel)
+
+                // Core button.
                 Circle()
                     .fill(Midnight.indigoDeep)
                     .frame(width: 96, height: 96)
