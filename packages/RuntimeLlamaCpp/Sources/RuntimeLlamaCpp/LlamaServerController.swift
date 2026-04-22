@@ -96,7 +96,13 @@ public final class LlamaServerController: ObservableObject, @unchecked Sendable 
     public func start(_ gguf: GGUFFile,
                       config: LlamaServerLaunchConfig = .defaults) {
         #if !os(iOS) && !os(tvOS) && !os(watchOS)
-        stop()
+        // Only tear down a previous subprocess if one is live. Calling
+        // stop() unconditionally used to re-set state = .stopped and race
+        // with the .starting assignment below, making start()s look like
+        // they silently did nothing.
+        if process != nil || state.isActive {
+            stop()
+        }
 
         guard let binary = binaryURL ?? Self.findBinary() else {
             state = .crashed(reason: "llama-server binary not found on PATH — brew install llama.cpp")
@@ -180,7 +186,21 @@ public final class LlamaServerController: ObservableObject, @unchecked Sendable 
         readinessTask = nil
         process?.terminate()
         process = nil
-        DispatchQueue.main.async { [weak self] in self?.state = .stopped }
+        // Sync main-hop: using DispatchQueue.main.async here raced with
+        // start()'s synchronous `state = .starting` assignment — start()
+        // calls stop() first, then sets .starting, then the queued
+        // .stopped from stop() overwrites it back and the UI appears
+        // "clicked, nothing happened". Set state immediately on main
+        // regardless of caller context.
+        setStateOnMain(.stopped)
+    }
+
+    private func setStateOnMain(_ new: LlamaServerState) {
+        if Thread.isMainThread {
+            self.state = new
+        } else {
+            DispatchQueue.main.sync { self.state = new }
+        }
     }
 
     // MARK: - Readiness
