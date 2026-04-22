@@ -8,8 +8,13 @@
     <string>ω</string>
     <key>CFBundleName</key>
     <string>LLMAB</string>
+    <!-- $(EXECUTABLE_NAME) resolves to the PRODUCT_NAME build setting at
+         bake time. With PRODUCT_NAME=LLMAB the bundle's binary ends up at
+         Contents/MacOS/LLMAB, and this key points at the same name. Hard-
+         coding "LLMABApp" here breaks `open` with "executable is missing"
+         when the two names drift. -->
     <key>CFBundleExecutable</key>
-    <string>LLMABApp</string>
+    <string>$(EXECUTABLE_NAME)</string>
     <key>CFBundleIconFile</key>
     <string>AppIcon</string>
     <key>CFBundleIconName</key>
