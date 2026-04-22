@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!--
+    macOS app icon. 1024×1024 canvas, squircle tile (corner radius = 22.37 %
+    of side per Apple's design spec → ~229 px), midnight radial backdrop,
+    aurora ω stroked with room in the safe area.
+
+    Safe-area guide: subject lives within an 824×824 square centered at
+    (512, 512). ω path stays comfortably inside.
+  -->
+  <defs>
+    <linearGradient id="aurora" x1="0%" y1="0%" x2="100%" y2="100%" gradientUnits="userSpaceOnUse">
+      <stop offset="0%"   stop-color="#5B8FD9"/>
+      <stop offset="18%"  stop-color="#5FB074"/>
+      <stop offset="36%"  stop-color="#E8C470"/>
+      <stop offset="54%"  stop-color="#D86A6A"/>
+      <stop offset="72%"  stop-color="#D48BB8"/>
+      <stop offset="88%"  stop-color="#9B7BC7"/>
+      <stop offset="100%" stop-color="#5B8FD9"/>
+    </linearGradient>
+
+    <radialGradient id="midnight" cx="50%" cy="52%" r="65%">
+      <stop offset="0%"  stop-color="#141838"/>
+      <stop offset="60%" stop-color="#0A0B18"/>
+      <stop offset="100%" stop-color="#050712"/>
+    </radialGradient>
+
+    <!-- Soft glow behind the ω to push it forward off the midnight tile. -->
+    <radialGradient id="halo" cx="50%" cy="52%" r="40%">
+      <stop offset="0%"  stop-color="#5B8FD9" stop-opacity="0.35"/>
+      <stop offset="50%" stop-color="#9B7BC7" stop-opacity="0.12"/>
+      <stop offset="100%" stop-color="#0A0B18" stop-opacity="0"/>
+    </radialGradient>
+
+    <filter id="inner-edge" x="-2%" y="-2%" width="104%" height="104%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="2"/>
+    </filter>
+  </defs>
+
+  <!-- Squircle tile. 22.37 % radius = ~229 px — matches macOS Monterey+ icons. -->
+  <rect x="0" y="0" width="1024" height="1024" rx="229" ry="229" fill="url(#midnight)"/>
+
+  <!-- 1 px inner hairline so the tile reads on dark dock backgrounds. -->
+  <rect x="0.5" y="0.5" width="1023" height="1023" rx="229" ry="229"
+        fill="none" stroke="#1B2140" stroke-width="1" opacity="0.6"/>
+
+  <!-- Halo behind the ω for depth. -->
+  <circle cx="512" cy="532" r="360" fill="url(#halo)"/>
+
+  <!--
+    Lowercase omega stroked in the aurora gradient, scaled up from the
+    256² mark path. Original path operated in a 256² box centered near
+    (128, 128); multiplied by 4 and translated to sit on a 1024² canvas
+    vertically offset so the "feet" of ω don't kiss the bottom edge.
+  -->
+  <g transform="translate(0, 20)">
+    <path d="
+      M 248 720
+      C 248 480, 368 368, 464 480
+      C 512 536, 512 624, 464 680
+      C 432 720, 400 720, 392 712
+      M 632 712
+      C 624 720, 592 720, 560 680
+      C 512 624, 512 536, 560 480
+      C 656 368, 776 480, 776 720
+    "
+          fill="none"
+          stroke="url(#aurora)"
+          stroke-width="56"
+          stroke-linecap="round"
+          stroke-linejoin="round"/>
+  </g>
+</svg>

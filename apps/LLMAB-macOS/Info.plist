@@ -10,6 +10,10 @@
     <string>LLMAB</string>
     <key>CFBundleExecutable</key>
     <string>LLMABApp</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
+    <key>CFBundleIconName</key>
+    <string>AppIcon</string>
     <key>CFBundleIdentifier</key>
     <string>org.llmab.omega</string>
     <key>CFBundleInfoDictionaryVersion</key>
