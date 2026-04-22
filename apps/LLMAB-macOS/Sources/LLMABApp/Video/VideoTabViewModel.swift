@@ -105,7 +105,7 @@ final class VideoTabViewModel: ObservableObject {
         let (runtime, info) = resolved
 
         guard info.capabilities.videoIn || info.capabilities.imageIn else {
-            error = "\(info.displayName) cannot accept frames — switch to Gemma 4 26B / 31B"
+            error = "\(info.displayName) can't accept images — switch to any vision-capable model (Gemma 4 E4B / 26B / 31B, Qwen 3 VL, MiniCPM-V, …)"
             return
         }
 

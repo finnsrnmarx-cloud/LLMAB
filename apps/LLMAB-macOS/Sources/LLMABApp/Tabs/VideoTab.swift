@@ -13,7 +13,7 @@ struct VideoTab: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             TabHeader("Video",
-                      subtitle: "live · aurora-full · requires 26B / 31B",
+                      subtitle: "live · aurora-full · any vision-capable model",
                       palette: .full,
                       showSpinner: vm.isReplying)
 
@@ -40,7 +40,7 @@ struct VideoTab: View {
                     .font(.system(.title3, design: .rounded).weight(.medium))
                     .foregroundStyle(Midnight.mist)
             }
-            Text("Hold the ω button to speak; release and ω replies about what it sees. Gemma 4 26B and 31B accept video frames; E-series does not.")
+            Text("Hold the ω button to speak; release and ω replies about what it sees. Works with any vision-capable model — Gemma 4 E4B is the sweet spot on 16 GB; 26B / 31B give richer scene understanding if you have 24 GB+.")
                 .font(.system(.footnote, design: .monospaced))
                 .foregroundStyle(Midnight.fog)
             Button {
