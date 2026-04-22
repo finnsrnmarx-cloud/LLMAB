@@ -1,14 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
   <defs>
     <linearGradient id="aurora" x1="0%" y1="0%" x2="100%" y2="100%" gradientUnits="userSpaceOnUse">
-      <stop offset="0%"  stop-color="#FF3B6B"/>
-      <stop offset="14%" stop-color="#FF8A3D"/>
-      <stop offset="28%" stop-color="#FFD23D"/>
-      <stop offset="42%" stop-color="#4DE28C"/>
-      <stop offset="56%" stop-color="#3BC6FF"/>
-      <stop offset="70%" stop-color="#7A5CFF"/>
-      <stop offset="84%" stop-color="#C94BFF"/>
-      <stop offset="100%" stop-color="#FF3B6B"/>
+      <stop offset="0%"  stop-color="#5B8FD9"/>
+      <stop offset="18%" stop-color="#5FB074"/>
+      <stop offset="36%" stop-color="#E8C470"/>
+      <stop offset="54%" stop-color="#D86A6A"/>
+      <stop offset="72%" stop-color="#D48BB8"/>
+      <stop offset="88%" stop-color="#9B7BC7"/>
+      <stop offset="100%" stop-color="#5B8FD9"/>
     </linearGradient>
     <radialGradient id="midnight" cx="50%" cy="55%" r="60%">
       <stop offset="0%"  stop-color="#10132A"/>
@@ -22,8 +21,7 @@
 
   <!--
     Lowercase omega (ω) stroked in the aurora gradient.
-    Path = stylised ω: two lobes meeting at a central dip,
-    feet splayed outward.
+    Path: two lobes meeting at a central dip, feet splayed outward.
   -->
   <path d="
     M 62 180

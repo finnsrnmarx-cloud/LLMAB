@@ -42,6 +42,9 @@ targets:
         PRODUCT_NAME: LLMAB
         GENERATE_INFOPLIST_FILE: NO
         ENABLE_HARDENED_RUNTIME: YES
+        # Dock icon: `AppIcon.icns` is generated from
+        # assets/brand/app-icon.svg by scripts/make-icon.sh.
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         # Ad-hoc sign for dev; `scripts/package.sh` overrides
         # CODE_SIGN_IDENTITY with the Developer ID cert at release.
         CODE_SIGN_STYLE: Automatic

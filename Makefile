@@ -10,7 +10,7 @@
 #   make package     sign + notarise + DMG (see docs/RELEASE.md)
 #   make clean       clean SwiftPM and build outputs
 
-.PHONY: build test lint cli xcodeproj app run-app package clean
+.PHONY: build test lint cli xcodeproj app run-app icon package clean
 
 build:
 	swift build -c debug
@@ -29,6 +29,9 @@ xcodeproj:
 	@command -v xcodegen >/dev/null || { echo "xcodegen not found — brew install xcodegen"; exit 1; }
 	xcodegen generate
 	@echo "✓ LLMAB.xcodeproj regenerated"
+
+icon:
+	./scripts/make-icon.sh
 
 app: xcodeproj
 	xcodebuild -project LLMAB.xcodeproj \
