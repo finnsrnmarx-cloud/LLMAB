@@ -2,6 +2,7 @@ import SwiftUI
 import LLMCore
 import ModelRegistry
 import RuntimeOllama
+import RuntimeLlamaCpp
 import MediaKit
 import UIKitOmega
 
@@ -28,13 +29,18 @@ struct SettingsView: View {
             VStack(alignment: .leading, spacing: 28) {
                 header
                 runtimesSection
+                LocalGGUFsSection(controller: store.llamaServer) {
+                    // When the server state transitions, re-scan so the
+                    // adapter's newly-served model shows up in Models.
+                    Task { await store.refresh() }
+                }
                 modelsSection
                 pullSection
                 voiceSection
             }
             .padding(28)
         }
-        .frame(minWidth: 640, minHeight: 520)
+        .frame(minWidth: 640, minHeight: 560)
         .background(Midnight.midnight)
     }
 

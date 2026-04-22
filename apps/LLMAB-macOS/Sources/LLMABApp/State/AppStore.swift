@@ -1,6 +1,7 @@
 import Foundation
 import LLMCore
 import ModelRegistry
+import RuntimeLlamaCpp
 import SwiftUI
 
 /// App-wide shared state: the registry, the snapshot, the chosen model, and —
@@ -16,6 +17,11 @@ final class AppStore: ObservableObject {
 
     let registry: ModelRegistry
     let persistence: PersistenceStore
+    /// Manages a spawned llama-server subprocess so the user can pick a
+    /// GGUF from the Settings pane and hit "start" without opening a
+    /// terminal. See `LlamaServerController` for lifecycle + readiness
+    /// polling details.
+    let llamaServer = LlamaServerController()
 
     @Published private(set) var snapshot: ModelRegistry.Snapshot?
     @Published private(set) var isScanning: Bool = false
@@ -72,6 +78,9 @@ final class AppStore: ObservableObject {
         self.chatVM.bind(to: self)
         self.codeVM.bind(to: self)
         self.agentsVM.bind(to: self)
+
+        // Seed the local GGUF scan so Settings shows the picker immediately.
+        self.llamaServer.rescanLocal()
     }
 
     /// Resolve the currently-selected model (runtime + info). Nil if nothing
@@ -112,6 +121,9 @@ final class AppStore: ObservableObject {
     /// Force-flush every VM's state to disk. Call from `applicationWillTerminate`
     /// or similar teardown points to ensure no in-flight debounces drop.
     func flushPersistence() {
+        // Kill any spawned llama-server first so it doesn't orphan when the
+        // app quits.
+        llamaServer.stop()
         chatVM.flushPersistence()
         codeVM.flushPersistence()
         agentsVM.flushPersistence()
