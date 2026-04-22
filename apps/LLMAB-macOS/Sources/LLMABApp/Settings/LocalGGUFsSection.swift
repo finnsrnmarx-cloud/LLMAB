@@ -122,14 +122,42 @@ struct LocalGGUFsSection: View {
                 .buttonStyle(.plain)
             }
         case .crashed(let reason):
-            HStack(spacing: 8) {
-                AuroraRing(size: 12, lineWidth: 1.5, state: .failure)
-                Text("crashed · \(reason)")
-                    .font(.system(.caption2, design: .monospaced))
-                    .foregroundStyle(Midnight.fog)
-                    .lineLimit(2)
-                Spacer()
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 8) {
+                    AuroraRing(size: 12, lineWidth: 1.5, state: .failure)
+                    Text("crashed · \(reason)")
+                        .font(.system(.caption2, design: .monospaced))
+                        .foregroundStyle(Midnight.fog)
+                        .lineLimit(2)
+                    Spacer()
+                }
+                logViewer
             }
+        }
+    }
+
+    /// Scrollable, selectable tail of whatever llama-server wrote to
+    /// stdout/stderr. Surfaces the real error when it crashes. Only shown
+    /// when there are lines to render.
+    @ViewBuilder
+    private var logViewer: some View {
+        if !controller.log.isEmpty {
+            ScrollView {
+                Text(controller.log.suffix(60).joined(separator: "\n"))
+                    .font(.system(.caption2, design: .monospaced))
+                    .foregroundStyle(Midnight.mist)
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(8)
+            }
+            .frame(maxHeight: 180)
+            .background(Midnight.abyss)
+            .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .stroke(AuroraGradient.linear(.full), lineWidth: 0.5)
+                    .opacity(0.35)
+            )
         }
     }
 
