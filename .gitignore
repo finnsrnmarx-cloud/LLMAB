@@ -6,6 +6,9 @@ Package.resolved
 *.xcodeproj/xcuserdata/
 *.xcworkspace/xcuserdata/
 
+# XcodeGen-generated — regenerate via `make xcodeproj`.
+LLMAB.xcodeproj/
+
 # Xcode
 DerivedData/
 *.xcuserstate
