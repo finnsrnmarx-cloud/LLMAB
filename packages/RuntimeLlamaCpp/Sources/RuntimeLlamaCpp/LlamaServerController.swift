@@ -121,7 +121,13 @@ public final class LlamaServerController: ObservableObject, @unchecked Sendable 
             args.append(contentsOf: ["--mmproj", mmproj.path])
         }
         if config.flashAttention {
-            args.append("--flash-attn")
+            // Newer llama.cpp (Apr 2026) requires an explicit on|off|auto
+            // value for --flash-attn. Bare `--flash-attn` consumes the
+            // next arg (`-ctk`) as its value and bails with
+            //   "unknown value for --flash-attn: '-ctk'"
+            // Past builds accepted the bare flag; "on" is compatible with
+            // both.
+            args.append(contentsOf: ["--flash-attn", "on"])
         }
         if config.quantizeKV {
             args.append(contentsOf: ["-ctk", "q8_0", "-ctv", "q8_0"])
