@@ -152,41 +152,80 @@ struct VideoTab: View {
     }
 
     private var controlBar: some View {
-        HStack {
-            Button(action: vm.stopSession) {
-                Image(systemName: "xmark")
-                    .font(.system(size: 11))
-                    .foregroundStyle(Midnight.fog)
-                    .padding(6)
-                    .background(Midnight.indigoDeep)
-                    .clipShape(Circle())
-            }
-            .buttonStyle(.plain)
-            Spacer()
-
-            Button {
-                if vm.isListening { vm.stopListening() } else { vm.startListening() }
-            } label: {
-                ZStack {
-                    Circle()
-                        .fill(Midnight.indigoDeep)
-                        .frame(width: 68, height: 68)
-                    Circle()
-                        .strokeBorder(AuroraGradient.angular(.full), lineWidth: 3)
-                        .frame(width: 68, height: 68)
-                        .opacity(vm.isListening ? 1 : 0.55)
-                    OmegaMark(size: 28, animated: vm.isListening)
+        VStack(spacing: 8) {
+            // Countdown ribbon while watching.
+            if vm.isWatching {
+                HStack(spacing: 6) {
+                    AuroraRing(size: 12, lineWidth: 1.5, state: .running)
+                    Text("watching · \(String(format: "%.1f", vm.watchSecondsRemaining))s left")
+                        .font(.system(.caption2, design: .monospaced))
+                        .foregroundStyle(Midnight.mist)
+                    Spacer()
                 }
             }
-            .buttonStyle(.plain)
-            .disabled(vm.isReplying)
 
-            Spacer()
-            if let err = vm.error {
-                Text(err)
-                    .font(.system(.caption2, design: .monospaced))
-                    .foregroundStyle(Midnight.fog)
-                    .lineLimit(2)
+            HStack {
+                Button(action: vm.stopSession) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 11))
+                        .foregroundStyle(Midnight.fog)
+                        .padding(6)
+                        .background(Midnight.indigoDeep)
+                        .clipShape(Circle())
+                }
+                .buttonStyle(.plain)
+                Spacer()
+
+                // Hold-to-talk — single snapshot
+                Button {
+                    if vm.isListening { vm.stopListening() } else { vm.startListening() }
+                } label: {
+                    ZStack {
+                        Circle()
+                            .fill(Midnight.indigoDeep)
+                            .frame(width: 68, height: 68)
+                        Circle()
+                            .strokeBorder(AuroraGradient.angular(.full), lineWidth: 3)
+                            .frame(width: 68, height: 68)
+                            .opacity(vm.isListening ? 1 : 0.55)
+                        OmegaMark(size: 28, animated: vm.isListening)
+                    }
+                }
+                .buttonStyle(.plain)
+                .disabled(vm.isReplying || vm.isWatching)
+                .help("hold-to-talk · snapshot of the current frame")
+
+                // Watch 10 s — 20-frame clip
+                Button {
+                    if vm.isWatching { vm.stopWatchEarly() } else { vm.startWatch() }
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: vm.isWatching ? "stop.circle" : "eye.circle")
+                            .font(.system(size: 14))
+                        Text(vm.isWatching ? "stop" : "watch 10s")
+                            .font(.system(.caption2, design: .monospaced).weight(.semibold))
+                    }
+                    .foregroundStyle(Midnight.mist)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(Midnight.indigoDeep)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .stroke(AuroraGradient.linear(.full), lineWidth: 0.8)
+                            .opacity(vm.isWatching ? 0.9 : 0.55)
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                }
+                .buttonStyle(.plain)
+                .disabled(vm.isReplying || vm.isListening)
+
+                Spacer()
+                if let err = vm.error {
+                    Text(err)
+                        .font(.system(.caption2, design: .monospaced))
+                        .foregroundStyle(Midnight.fog)
+                        .lineLimit(2)
+                }
             }
         }
         .padding(12)

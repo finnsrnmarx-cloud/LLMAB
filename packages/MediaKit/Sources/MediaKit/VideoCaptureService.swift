@@ -27,6 +27,19 @@ public final class VideoCaptureService: NSObject, ObservableObject {
     @Published public private(set) var isRunning: Bool = false
     @Published public private(set) var lastError: String?
 
+    /// Watch-mode state — true between `startWatchCapture` and
+    /// `stopWatchCapture`. UI reads this to switch the mic button's label
+    /// from "watch" → "stop" and render a countdown.
+    @Published public private(set) var isWatching: Bool = false
+
+    #if canImport(AVFoundation)
+    /// Ring buffer for watch mode. `DispatchQueue.sync`-gated via `queue`
+    /// so the capture delegate and the UI see a consistent snapshot.
+    private var watchFrames: [(Date, Data)] = []
+    private var watchTimer: DispatchSourceTimer?
+    private var watchWindowSeconds: Double = 10
+    #endif
+
     public override init() {
         super.init()
     }
@@ -95,6 +108,86 @@ public final class VideoCaptureService: NSObject, ObservableObject {
         return nil
         #endif
     }
+
+    // MARK: - Watch mode (ring buffer)
+
+    /// Start capturing frames at `intervalSeconds` cadence into a rolling
+    /// window of `windowSeconds` total. Frames older than the window are
+    /// discarded. Call `snapshotWatchWindow()` at any time to get the
+    /// current contents, then `stopWatchCapture()` when done.
+    public func startWatchCapture(intervalSeconds: Double = 0.5,
+                                  windowSeconds: Double = 10.0) {
+        #if canImport(AVFoundation)
+        queue.async {
+            self.watchFrames.removeAll(keepingCapacity: true)
+            self.watchWindowSeconds = windowSeconds
+            self.watchTimer?.cancel()
+            let timer = DispatchSource.makeTimerSource(queue: self.queue)
+            timer.schedule(deadline: .now() + intervalSeconds,
+                           repeating: intervalSeconds)
+            timer.setEventHandler { [weak self] in
+                self?.captureWatchFrame()
+            }
+            timer.resume()
+            self.watchTimer = timer
+            DispatchQueue.main.async { self.isWatching = true }
+        }
+        #endif
+    }
+
+    public func stopWatchCapture() {
+        #if canImport(AVFoundation)
+        queue.async {
+            self.watchTimer?.cancel()
+            self.watchTimer = nil
+            DispatchQueue.main.async { self.isWatching = false }
+        }
+        #endif
+    }
+
+    /// Snapshot + clear the ring buffer. Returns frames oldest → newest so
+    /// the model sees temporal ordering correctly.
+    public func snapshotWatchWindow() -> [Data] {
+        #if canImport(AVFoundation)
+        queue.sync {
+            let sorted = watchFrames.sorted(by: { $0.0 < $1.0 })
+            let copy = sorted.map(\.1)
+            watchFrames.removeAll(keepingCapacity: true)
+            return copy
+        }
+        #else
+        return []
+        #endif
+    }
+
+    #if canImport(AVFoundation)
+    /// Called from the watch timer on `queue`. Encodes the most recent
+    /// pixel buffer → JPEG, appends with timestamp, trims past the window.
+    private func captureWatchFrame() {
+        guard let data = renderLatestAsJPEG() else { return }
+        let now = Date()
+        watchFrames.append((now, data))
+        let cutoff = now.addingTimeInterval(-watchWindowSeconds)
+        watchFrames.removeAll(where: { $0.0 < cutoff })
+    }
+
+    /// Shared JPEG render path used by both `latestFrameJPEG` and the
+    /// watch timer. Runs entirely on `queue` (delegate + timer both enqueue
+    /// there), so no extra locking needed.
+    private func renderLatestAsJPEG(quality: CGFloat = 0.7) -> Data? {
+        #if canImport(CoreImage) && canImport(AppKit)
+        guard let buffer = latestPixelBuffer else { return nil }
+        let ci = CIImage(cvPixelBuffer: buffer)
+        let ctx = CIContext()
+        guard let cg = ctx.createCGImage(ci, from: ci.extent) else { return nil }
+        let rep = NSBitmapImageRep(cgImage: cg)
+        return rep.representation(using: .jpeg,
+                                  properties: [.compressionFactor: quality])
+        #else
+        return nil
+        #endif
+    }
+    #endif
 
     // MARK: - Device selection
 
