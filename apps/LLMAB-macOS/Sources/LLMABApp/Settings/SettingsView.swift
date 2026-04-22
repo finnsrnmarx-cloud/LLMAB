@@ -300,15 +300,20 @@ struct SettingsView: View {
                     .foregroundStyle(Midnight.fog)
             } else {
                 Picker("voice", selection: $store.ttsVoiceIdentifier) {
-                    Text("system default").tag(String?.none)
+                    Text("auto (best British voice installed)").tag(String?.none)
                     ForEach(voices, id: \.self) { v in
-                        Text(v).tag(String?.some(v))
+                        Text(TTSService.label(for: v)).tag(String?.some(v))
                     }
                 }
                 .pickerStyle(.menu)
                 .onChange(of: store.ttsVoiceIdentifier) { _, new in
-                    tts.speak("The quick brown ω jumps over the lazy model.", voice: new)
+                    tts.speak("Hello — this is ω. I read the room, and the room reads me back.",
+                              voice: new)
                 }
+                Text("Tip: for the nicest voice, open System Settings → Accessibility → Spoken Content → System Voice → English (UK), then tap Customize and download a Premium voice (Siri Voice 2 or 4 on Apple Silicon).")
+                    .font(.system(.caption2, design: .monospaced))
+                    .foregroundStyle(Midnight.fog)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
     }
