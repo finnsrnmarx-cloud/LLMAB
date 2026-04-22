@@ -70,6 +70,11 @@ let package = Package(
             dependencies: ["LLMCore"],
             path: "packages/AgentKit/Sources/AgentKit"
         ),
+        .testTarget(
+            name: "AgentKitTests",
+            dependencies: ["AgentKit", "LLMCore"],
+            path: "packages/AgentKit/Tests/AgentKitTests"
+        ),
         .target(
             name: "MediaKit",
             dependencies: ["LLMCore"],
