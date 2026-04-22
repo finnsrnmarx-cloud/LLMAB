@@ -54,7 +54,7 @@ let package = Package(
         ),
         .target(
             name: "ModelRegistry",
-            dependencies: ["LLMCore", "RuntimeOllama"],
+            dependencies: ["LLMCore", "RuntimeOllama", "RuntimeMLX", "RuntimeLlamaCpp"],
             path: "packages/ModelRegistry/Sources/ModelRegistry"
         ),
         .testTarget(

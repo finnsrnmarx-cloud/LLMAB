@@ -1,9 +1,8 @@
 import Foundation
 import LLMCore
 import RuntimeOllama
-// RuntimeMLX + RuntimeLlamaCpp are still buildable as standalone targets;
-// we temporarily stop importing them into ModelRegistry while we isolate a
-// CI build failure (see the matching revert comment in defaultRuntimes()).
+import RuntimeMLX
+import RuntimeLlamaCpp
 
 /// Central aggregator across every installed `LLMRuntime`. Scans them all in
 /// parallel, merges the results, and upgrades each `ModelInfo` with the
@@ -57,12 +56,12 @@ public actor ModelRegistry {
         self.runtimes = runtimes
     }
 
-    /// Runtimes probed in parallel at scan time. For now, only Ollama is
-    /// auto-registered — MLX and llama.cpp adapters compile standalone but
-    /// are temporarily removed from the default list while we isolate a CI
-    /// build failure. They can still be passed explicitly to `init(runtimes:)`.
+    /// Runtimes probed in parallel at scan time. Each reports available=false
+    /// via RuntimeStatus if it can't reach its daemon/binary — no models are
+    /// contributed in that case. So installing just one of Ollama / llama.cpp
+    /// / MLX is fine; the others simply appear greyed-out in Settings.
     public static func defaultRuntimes() -> [any LLMRuntime] {
-        [OllamaRuntime()]
+        [OllamaRuntime(), MLXRuntime(), LlamaCppRuntime()]
     }
 
     // MARK: - Scan
