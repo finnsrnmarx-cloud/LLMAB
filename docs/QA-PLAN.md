@@ -25,6 +25,8 @@ make qa-fast
 3. macOS metadata normalization (`xattr -cr` on app resources/assets)
 4. `xcodegen generate`
 5. `xcodebuild` Debug app build
+6. final app bundle metadata normalization
+7. `codesign --verify --deep --strict` on the Debug app bundle
 
 ### 2) Full mode (release candidate)
 
@@ -51,6 +53,8 @@ make qa-full
 - `artifacts/qa/<timestamp>/xattr.log`
 - `artifacts/qa/<timestamp>/xcodegen.log`
 - `artifacts/qa/<timestamp>/xcodebuild.log`
+- `artifacts/qa/<timestamp>/app-xattr.log`
+- `artifacts/qa/<timestamp>/codesign-verify.log`
 
 When a command fails, the run stops and the failing command is recorded in `summary.txt`.
 

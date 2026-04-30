@@ -44,6 +44,7 @@ app: strip-macos-metadata xcodeproj
 	    -configuration Debug \
 	    -derivedDataPath build/DerivedData \
 	    build
+	./scripts/normalize-macos-metadata.sh "build/DerivedData/Build/Products/Debug/LLMAB.app"
 
 run-app: app
 	open "build/DerivedData/Build/Products/Debug/LLMAB.app"

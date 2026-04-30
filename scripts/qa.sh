@@ -48,6 +48,10 @@ run_step "xcodebuild debug app" "$out_dir/xcodebuild.log" \
              -configuration Debug \
              -derivedDataPath build/DerivedData \
              build
+run_step "strip built app metadata" "$out_dir/app-xattr.log" \
+  ./scripts/normalize-macos-metadata.sh build/DerivedData/Build/Products/Debug/LLMAB.app
+run_step "verify debug app signature" "$out_dir/codesign-verify.log" \
+  codesign --verify --deep --strict --verbose=2 build/DerivedData/Build/Products/Debug/LLMAB.app
 
 if [[ "$mode" == "full" ]]; then
   {
