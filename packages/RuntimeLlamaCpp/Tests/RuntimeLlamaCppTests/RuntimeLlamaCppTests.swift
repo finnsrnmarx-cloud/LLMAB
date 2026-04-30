@@ -28,6 +28,30 @@ final class RuntimeLlamaCppTests: XCTestCase {
         XCTAssertEqual(imageURL["url"] as? String, "data:image/jpeg;base64,yv4=")
     }
 
+    func testWireBodyPreservesOrderedFrameBlocks() throws {
+        let request = ChatRequest(
+            modelId: "llamacpp:qwen-vl",
+            messages: [
+                Message(role: .user, parts: [
+                    .image(Data([0x01]), mimeType: "image/jpeg"),
+                    .image(Data([0x02]), mimeType: "image/jpeg"),
+                    .text("ordered frames")
+                ])
+            ]
+        )
+
+        let json = try Self.jsonObject(from: LlamaCppRuntime.wireBodyData(for: request))
+        let messages = try XCTUnwrap(json["messages"] as? [[String: Any]])
+        let content = try XCTUnwrap(messages.first?["content"] as? [[String: Any]])
+
+        XCTAssertEqual(content.compactMap { $0["type"] as? String }, ["image_url", "image_url", "text"])
+        let firstURL = try XCTUnwrap(content[0]["image_url"] as? [String: Any])
+        let secondURL = try XCTUnwrap(content[1]["image_url"] as? [String: Any])
+        XCTAssertEqual(firstURL["url"] as? String, "data:image/jpeg;base64,AQ==")
+        XCTAssertEqual(secondURL["url"] as? String, "data:image/jpeg;base64,Ag==")
+        XCTAssertEqual(content[2]["text"] as? String, "ordered frames")
+    }
+
     func testWireBodyMapsToolsAndToolHistory() throws {
         let schema = ToolParameterSchema(
             properties: [

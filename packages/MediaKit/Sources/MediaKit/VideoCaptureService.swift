@@ -22,6 +22,15 @@ public final class VideoCaptureService: NSObject, ObservableObject, @unchecked S
     private let queue = DispatchQueue(label: "org.llmab.omega.video", qos: .userInitiated)
     private let output = AVCaptureVideoDataOutput()
     private var latestPixelBuffer: CVPixelBuffer?
+    private var latestFrame: VideoFrameSample?
+    private var rollingFrames: [VideoFrameSample] = []
+    private var lastEncodedFrameAt: Date?
+    private var inferenceFrameIntervalSeconds: TimeInterval = 0.05
+    private let rollingWindowSeconds: TimeInterval = 12
+    private let maxRollingFrames = 240
+    #if canImport(CoreImage)
+    private let ciContext = CIContext()
+    #endif
     #endif
 
     @Published public private(set) var isRunning: Bool = false
@@ -35,8 +44,7 @@ public final class VideoCaptureService: NSObject, ObservableObject, @unchecked S
     #if canImport(AVFoundation)
     /// Ring buffer for watch mode. `DispatchQueue.sync`-gated via `queue`
     /// so the capture delegate and the UI see a consistent snapshot.
-    private var watchFrames: [(Date, Data)] = []
-    private var watchTimer: DispatchSourceTimer?
+    private var watchStartedAt: Date?
     private var watchWindowSeconds: Double = 10
     #endif
 
@@ -68,13 +76,22 @@ public final class VideoCaptureService: NSObject, ObservableObject, @unchecked S
                 if self.session.outputs.isEmpty, self.session.canAddOutput(self.output) {
                     self.output.setSampleBufferDelegate(self, queue: self.queue)
                     self.output.alwaysDiscardsLateVideoFrames = true
+                    self.output.videoSettings = [
+                        kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA
+                    ]
                     self.session.addOutput(self.output)
+                    if let connection = self.output.connection(with: .video),
+                       connection.isVideoMinFrameDurationSupported {
+                        connection.videoMinFrameDuration = CMTime(value: 1, timescale: 20)
+                    }
                 }
 
                 self.session.commitConfiguration()
                 self.session.startRunning()
-                DispatchQueue.main.async { self.isRunning = true }
-                cont.resume()
+                DispatchQueue.main.async {
+                    self.isRunning = true
+                    cont.resume()
+                }
             }
         }
         #endif
@@ -93,17 +110,11 @@ public final class VideoCaptureService: NSObject, ObservableObject, @unchecked S
     /// first frame has arrived.
     public func latestFrameJPEG(quality: CGFloat = 0.7) -> Data? {
         #if canImport(AVFoundation) && canImport(CoreImage)
-        guard let buffer = latestPixelBuffer else { return nil }
-        let ci = CIImage(cvPixelBuffer: buffer)
-        let ctx = CIContext()
-        guard let cg = ctx.createCGImage(ci, from: ci.extent) else { return nil }
-        #if canImport(AppKit)
-        let rep = NSBitmapImageRep(cgImage: cg)
-        return rep.representation(using: .jpeg,
-                                  properties: [.compressionFactor: quality])
-        #else
-        return nil
-        #endif
+        queue.sync {
+            if let latestFrame { return latestFrame.jpegData }
+            guard let buffer = latestPixelBuffer else { return nil }
+            return renderPixelBufferAsJPEG(buffer, quality: quality)
+        }
         #else
         return nil
         #endif
@@ -119,17 +130,10 @@ public final class VideoCaptureService: NSObject, ObservableObject, @unchecked S
                                   windowSeconds: Double = 10.0) {
         #if canImport(AVFoundation)
         queue.async {
-            self.watchFrames.removeAll(keepingCapacity: true)
+            self.watchStartedAt = Date()
             self.watchWindowSeconds = windowSeconds
-            self.watchTimer?.cancel()
-            let timer = DispatchSource.makeTimerSource(queue: self.queue)
-            timer.schedule(deadline: .now() + intervalSeconds,
-                           repeating: intervalSeconds)
-            timer.setEventHandler { [weak self] in
-                self?.captureWatchFrame()
-            }
-            timer.resume()
-            self.watchTimer = timer
+            self.inferenceFrameIntervalSeconds = max(0.05, intervalSeconds)
+            self.rollingFrames.removeAll(keepingCapacity: true)
             DispatchQueue.main.async { self.isWatching = true }
         }
         #endif
@@ -138,8 +142,7 @@ public final class VideoCaptureService: NSObject, ObservableObject, @unchecked S
     public func stopWatchCapture() {
         #if canImport(AVFoundation)
         queue.async {
-            self.watchTimer?.cancel()
-            self.watchTimer = nil
+            self.watchStartedAt = nil
             DispatchQueue.main.async { self.isWatching = false }
         }
         #endif
@@ -148,11 +151,19 @@ public final class VideoCaptureService: NSObject, ObservableObject, @unchecked S
     /// Snapshot + clear the ring buffer. Returns frames oldest → newest so
     /// the model sees temporal ordering correctly.
     public func snapshotWatchWindow() -> [Data] {
+        snapshotWatchFrames().map(\.jpegData)
+    }
+
+    /// Snapshot + clear the watch buffer as timestamped frames.
+    public func snapshotWatchFrames() -> [VideoFrameSample] {
         #if canImport(AVFoundation)
         queue.sync {
-            let sorted = watchFrames.sorted(by: { $0.0 < $1.0 })
-            let copy = sorted.map(\.1)
-            watchFrames.removeAll(keepingCapacity: true)
+            let start = watchStartedAt ?? Date().addingTimeInterval(-watchWindowSeconds)
+            let sorted = rollingFrames
+                .filter { $0.timestamp >= start }
+                .sorted(by: { $0.timestamp < $1.timestamp })
+            let copy = sorted
+            rollingFrames.removeAll(keepingCapacity: true)
             return copy
         }
         #else
@@ -161,31 +172,51 @@ public final class VideoCaptureService: NSObject, ObservableObject, @unchecked S
     }
 
     #if canImport(AVFoundation)
-    /// Called from the watch timer on `queue`. Encodes the most recent
-    /// pixel buffer → JPEG, appends with timestamp, trims past the window.
-    private func captureWatchFrame() {
-        guard let data = renderLatestAsJPEG() else { return }
-        let now = Date()
-        watchFrames.append((now, data))
-        let cutoff = now.addingTimeInterval(-watchWindowSeconds)
-        watchFrames.removeAll(where: { $0.0 < cutoff })
+    /// Shared JPEG render path used by both `latestFrameJPEG` and the
+    /// frame pipeline. Runs entirely on `queue`, so no extra locking needed.
+    private func renderLatestAsJPEG(quality: CGFloat = 0.7) -> Data? {
+        guard let buffer = latestPixelBuffer else { return nil }
+        return renderPixelBufferAsJPEG(buffer, quality: quality)
     }
 
-    /// Shared JPEG render path used by both `latestFrameJPEG` and the
-    /// watch timer. Runs entirely on `queue` (delegate + timer both enqueue
-    /// there), so no extra locking needed.
-    private func renderLatestAsJPEG(quality: CGFloat = 0.7) -> Data? {
+    private func renderPixelBufferAsJPEG(_ buffer: CVPixelBuffer,
+                                         quality: CGFloat = 0.55,
+                                         maxDimension: CGFloat = 512) -> Data? {
         #if canImport(CoreImage) && canImport(AppKit)
-        guard let buffer = latestPixelBuffer else { return nil }
         let ci = CIImage(cvPixelBuffer: buffer)
-        let ctx = CIContext()
-        guard let cg = ctx.createCGImage(ci, from: ci.extent) else { return nil }
+        let extent = ci.extent
+        let longestSide = max(extent.width, extent.height)
+        let scale = longestSide > maxDimension ? maxDimension / longestSide : 1
+        let resized = ci.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
+        guard let cg = ciContext.createCGImage(resized, from: resized.extent) else { return nil }
         let rep = NSBitmapImageRep(cgImage: cg)
         return rep.representation(using: .jpeg,
                                   properties: [.compressionFactor: quality])
         #else
         return nil
         #endif
+    }
+
+    private func recordFrame(_ pixelBuffer: CVPixelBuffer, timestamp: Date) {
+        latestPixelBuffer = pixelBuffer
+        if let lastEncodedFrameAt,
+           timestamp.timeIntervalSince(lastEncodedFrameAt) < inferenceFrameIntervalSeconds {
+            return
+        }
+        guard let data = renderPixelBufferAsJPEG(pixelBuffer) else { return }
+        let sample = VideoFrameSample(timestamp: timestamp, jpegData: data)
+        latestFrame = sample
+        rollingFrames.append(sample)
+        lastEncodedFrameAt = timestamp
+        trimRollingFrames(now: timestamp)
+    }
+
+    private func trimRollingFrames(now: Date) {
+        let cutoff = now.addingTimeInterval(-rollingWindowSeconds)
+        rollingFrames.removeAll { $0.timestamp < cutoff }
+        if rollingFrames.count > maxRollingFrames {
+            rollingFrames.removeFirst(rollingFrames.count - maxRollingFrames)
+        }
     }
     #endif
 
@@ -207,7 +238,7 @@ extension VideoCaptureService: AVCaptureVideoDataOutputSampleBufferDelegate {
                               didOutput sampleBuffer: CMSampleBuffer,
                               from connection: AVCaptureConnection) {
         guard let pb = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
-        latestPixelBuffer = pb
+        recordFrame(pb, timestamp: Date())
     }
 }
 #endif

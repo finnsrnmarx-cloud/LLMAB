@@ -124,4 +124,41 @@ final class CapabilityMapTests: XCTestCase {
             XCTAssertTrue(caps.tags.contains("image-gen"))
         }
     }
+
+    // MARK: - Cloud/API providers
+
+    func testDeepSeekIsTextToolReasoningButNotVisionOrVideo() {
+        let info = ModelInfo(
+            id: "deepseek:deepseek-v4-pro",
+            rawName: "deepseek-v4-pro",
+            displayName: "DeepSeek V4 Pro",
+            runtimeId: "deepseek",
+            family: "deepseek-v4-pro"
+        )
+        let caps = CapabilityMap.capabilities(for: info)
+        XCTAssertTrue(caps.textIn)
+        XCTAssertTrue(caps.textOut)
+        XCTAssertTrue(caps.toolUse)
+        XCTAssertTrue(caps.thinking)
+        XCTAssertFalse(caps.imageIn)
+        XCTAssertFalse(caps.videoIn)
+        XCTAssertEqual(caps.videoProfile, .none)
+        XCTAssertEqual(caps.privacy, .cloudProvider)
+    }
+
+    func testQwenVLAdvertisesSampledClipVision() {
+        let info = ModelInfo(
+            id: "ollama:qwen2.5-vl:7b",
+            rawName: "qwen2.5-vl:7b",
+            displayName: "Qwen2.5 VL 7B",
+            runtimeId: "ollama",
+            family: "qwen2.5-vl",
+            variant: "7b"
+        )
+        let caps = CapabilityMap.capabilities(for: info)
+        XCTAssertTrue(caps.imageIn)
+        XCTAssertTrue(caps.videoProfile.sampledClip)
+        XCTAssertEqual(caps.videoProfile.maxFrameRate, 4)
+        XCTAssertEqual(caps.privacy, .localOnly)
+    }
 }

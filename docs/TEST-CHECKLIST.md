@@ -146,10 +146,10 @@ For each tab: **Code / Chat / Agents / Video / Settings**
 |---|---|
 | [ ] Click `start camera` | First time: camera permission dialog; grant it |
 | [ ] Preview appears | Live feed visible; "live" chip + spinner overlay in the corner |
-| [ ] Hold the big ω button (or tap, depending on platform) | Dictation starts; live transcription appears in the sidebar |
-| [ ] Release (or tap again) | Latest frame + your words go to any vision-capable model; reply streams into transcript AND is spoken via TTS |
-| [ ] If you're on a text-only model | Sidebar shows "X can't accept images/frames — switch to a vision-capable model" |
-| [ ] Click `watch 10s` | Countdown runs, frames are sampled, and the final reply focuses on change over time |
+| [ ] Tap the big ω button | Snapshot mode sends the latest frame + your words; reply streams into transcript AND is spoken via TTS |
+| [ ] Select `adaptive live`, then start the clip | Countdown runs, near-20fps preview frames are sampled down to the model profile, and the reply focuses on change over time |
+| [ ] Select `20fps experimental` on a model without 20fps support | Sidebar shows a clear blocked-state message and suggests adaptive live / switching models |
+| [ ] If you're on a text-only or cloud text model | Sidebar shows a vision-model picker instead of silently dropping frames |
 | [ ] Click ✕ in the control bar | Camera stops, preview disappears |
 
 ---
@@ -163,13 +163,22 @@ For each tab: **Code / Chat / Agents / Video / Settings**
 | [ ] `Ollama · local daemon` row: green AuroraRing if daemon running, grey if not | Grey row shows error text "runtime not reachable" |
 | [ ] `llama.cpp · llama-server` row: same logic on port 8080 | — |
 | [ ] `MLX · Apple Silicon native` row: green if `mlx_lm` on PATH | — |
+| [ ] `DeepSeek · cloud API` row: grey until an API key is saved | Error/status says API key is not configured |
 | [ ] Click `rescan` (top-right of header) | Spinner briefly appears; rows re-populate |
+
+### Cloud providers section
+
+| Action | Expected |
+|---|---|
+| [ ] DeepSeek key absent | Provider row says no API key configured; no DeepSeek models appear |
+| [ ] Save a DeepSeek API key | Key field clears, status says stored in Keychain, rescan shows DeepSeek models with `cloud` badge |
+| [ ] Clear the DeepSeek API key | Status returns to unconfigured and DeepSeek models disappear after rescan |
 
 ### Models section
 
 | Action | Expected |
 |---|---|
-| [ ] Every discoverable model listed | Each row shows display name, runtime id, capability badges (img / aud / vid / tool / think / context-K) |
+| [ ] Every discoverable model listed | Each row shows display name, runtime id, privacy badge, modality badges, frame-profile badge, and context-K |
 | [ ] Click a row | Row gets aurora outline + glowing ω; row becomes "active" everywhere in the app |
 | [ ] Active model has `loaded` tag if the runtime reports it loaded | Ollama `/api/ps` reported models |
 

@@ -1,12 +1,13 @@
 import Foundation
 
-/// A single local runtime: the Ollama daemon, `mlx_lm`, `llama-server`, etc.
+/// A single model provider: local runtimes such as the Ollama daemon,
+/// `mlx_lm`, `llama-server`, plus opt-in cloud providers.
 ///
 /// Implementations are expected to be `Sendable`, since the UI and the
 /// `ModelRegistry` call them from arbitrary tasks.
 public protocol LLMRuntime: Sendable {
 
-    /// Stable identifier: "ollama", "mlx", "llamacpp". Matches
+    /// Stable identifier: "ollama", "mlx", "llamacpp", "deepseek". Matches
     /// `ModelInfo.runtimeId`.
     var id: String { get }
 

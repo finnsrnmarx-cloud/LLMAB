@@ -98,6 +98,8 @@ targets:
       - package: LLMAB
         product: RuntimeLlamaCpp
       - package: LLMAB
+        product: RuntimeOpenAICompatible
+      - package: LLMAB
         product: AgentKit
       - package: LLMAB
         product: MediaKit

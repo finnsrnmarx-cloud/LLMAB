@@ -1,10 +1,11 @@
 import SwiftUI
 import UIKitOmega
 import MediaKit
+import LLMCore
 
-/// Video tab — live camera + mic → VLM → TTS. Turn-based: hold the ω button
-/// to talk, release to send the latest frame + what you said. Full
-/// continuous mode is a later iteration.
+/// Video tab — camera + mic → VLM → TTS. Snapshot talk is immediate; clip
+/// mode captures near-20fps preview frames and then samples them according to
+/// the selected model's video profile.
 struct VideoTab: View {
     @EnvironmentObject private var store: AppStore
     @EnvironmentObject private var tts: TTSService
@@ -40,7 +41,7 @@ struct VideoTab: View {
                     .font(.system(.title3, design: .rounded).weight(.medium))
                     .foregroundStyle(Midnight.mist)
             }
-            Text("Hold the ω button to speak; release and ω replies about what it sees. Works with any vision-capable model — Gemma 4 E4B is the sweet spot on 16 GB; 26B / 31B give richer scene understanding if you have 24 GB+.")
+            Text("Tap ω for a camera snapshot, or use adaptive live for a short sampled clip. 20fps experimental is guarded and only runs on models that advertise high-rate video ingest.")
                 .font(.system(.footnote, design: .monospaced))
                 .foregroundStyle(Midnight.fog)
             Button {
@@ -157,12 +158,15 @@ struct VideoTab: View {
             if vm.isWatching {
                 HStack(spacing: 6) {
                     AuroraRing(size: 12, lineWidth: 1.5, state: .running)
-                    Text("watching · \(String(format: "%.1f", vm.watchSecondsRemaining))s left")
+                    Text("\(clipModeLabel) · \(String(format: "%.1f", vm.watchSecondsRemaining))s left")
                         .font(.system(.caption2, design: .monospaced))
                         .foregroundStyle(Midnight.mist)
                     Spacer()
                 }
             }
+
+            clipModePicker
+            visionFallbackPicker
 
             HStack {
                 Button(action: vm.stopSession) {
@@ -193,16 +197,16 @@ struct VideoTab: View {
                 }
                 .buttonStyle(.plain)
                 .disabled(vm.isReplying || vm.isWatching)
-                .help("hold-to-talk · snapshot of the current frame")
+                .help("snapshot of the current frame")
 
-                // Watch 10 s — 20-frame clip
+                // Clip capture — adaptive by default, guarded 20fps experiment.
                 Button {
                     if vm.isWatching { vm.stopWatchEarly() } else { vm.startWatch() }
                 } label: {
                     HStack(spacing: 6) {
                         Image(systemName: vm.isWatching ? "stop.circle" : "eye.circle")
                             .font(.system(size: 14))
-                        Text(vm.isWatching ? "stop" : "watch 10s")
+                        Text(vm.isWatching ? "stop" : clipButtonLabel)
                             .font(.system(.caption2, design: .monospaced).weight(.semibold))
                     }
                     .foregroundStyle(Midnight.mist)
@@ -229,5 +233,81 @@ struct VideoTab: View {
             }
         }
         .padding(12)
+    }
+
+    private var clipModePicker: some View {
+        Picker("video mode", selection: $vm.clipMode) {
+            Text("adaptive live").tag(VideoTurnMode.adaptiveLive)
+            Text("20fps experimental").tag(VideoTurnMode.experimental20FPS)
+        }
+        .pickerStyle(.segmented)
+        .labelsHidden()
+        .disabled(vm.isReplying || vm.isListening || vm.isWatching)
+        .help("Adaptive live captures near 20fps but sends selected keyframes. 20fps experimental sends a short high-rate window only if the model advertises support.")
+    }
+
+    private var visionFallbackPicker: some View {
+        Group {
+            if !selectedModelAcceptsFrames {
+                HStack(spacing: 8) {
+                    Text("selected model can't see frames")
+                        .font(.system(.caption2, design: .monospaced))
+                        .foregroundStyle(Midnight.fog)
+                    Spacer()
+                    Menu("pick vision") {
+                        ForEach(visionModels) { model in
+                            Button(model.displayName) {
+                                store.selectedModelId = model.id
+                            }
+                        }
+                    }
+                    .font(.system(.caption2, design: .monospaced))
+                }
+            }
+            if vm.clipMode == .experimental20FPS {
+                Text("20fps experimental may be slow and is blocked unless the selected model advertises high-rate video ingest.")
+                    .font(.system(.caption2, design: .monospaced))
+                    .foregroundStyle(Midnight.fog)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    private var clipButtonLabel: String {
+        switch vm.clipMode {
+        case .snapshot:
+            return "snapshot"
+        case .adaptiveLive:
+            return "adaptive live"
+        case .experimental20FPS:
+            return "20fps exp"
+        }
+    }
+
+    private var clipModeLabel: String {
+        switch vm.clipMode {
+        case .snapshot:
+            return "snapshot"
+        case .adaptiveLive:
+            return "adaptive live"
+        case .experimental20FPS:
+            return "20fps"
+        }
+    }
+
+    private var selectedModelAcceptsFrames: Bool {
+        guard let id = store.selectedModelId,
+              let model = store.snapshot?.models.first(where: { $0.id == id }) else {
+            return false
+        }
+        let profile = model.capabilities.videoProfile
+        return model.capabilities.imageIn || profile.snapshot || profile.sampledClip || profile.nativeVideo
+    }
+
+    private var visionModels: [ModelInfo] {
+        store.snapshot?.models.filter { model in
+            let profile = model.capabilities.videoProfile
+            return model.capabilities.imageIn || profile.snapshot || profile.sampledClip || profile.nativeVideo
+        } ?? []
     }
 }

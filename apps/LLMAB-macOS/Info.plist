@@ -37,10 +37,10 @@
          See docs/APP-STORE.md for the full rationale. -->
 
     <key>NSCameraUsageDescription</key>
-    <string>ω uses the camera for the Video tab: 1 fps frames are sent to a local LLM (Gemma 4 26B / 31B) that runs entirely on this device. No video leaves your Mac.</string>
+    <string>ω uses the camera for the Video tab. Frames are processed by selected local vision models; current cloud text providers do not receive camera frames.</string>
 
     <key>NSMicrophoneUsageDescription</key>
-    <string>ω uses the microphone for dictation and live conversation with a local LLM. Audio is processed on-device and never uploaded.</string>
+    <string>ω uses the microphone for dictation and live conversation. Audio transcription is processed on-device; text may be sent if you select an opt-in cloud model.</string>
 
     <key>NSSpeechRecognitionUsageDescription</key>
     <string>ω transcribes your voice on-device using Apple Speech when you use dictate or live-conversation modes.</string>
@@ -57,7 +57,7 @@
     <key>NSAppleEventsUsageDescription</key>
     <string>ω runs approved shell commands from the Agents tab. Every command is displayed and requires your consent before execution.</string>
 
-    <!-- Network: loopback to Ollama / llama-server on 127.0.0.1 -->
+    <!-- Network: loopback to local runtimes; HTTPS only for opt-in cloud providers. -->
 
     <key>NSAppTransportSecurity</key>
     <dict>
