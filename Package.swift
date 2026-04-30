@@ -12,6 +12,7 @@ let package = Package(
         .library(name: "RuntimeOllama", targets: ["RuntimeOllama"]),
         .library(name: "RuntimeMLX", targets: ["RuntimeMLX"]),
         .library(name: "RuntimeLlamaCpp", targets: ["RuntimeLlamaCpp"]),
+        .library(name: "RuntimeOpenAICompatible", targets: ["RuntimeOpenAICompatible"]),
         .library(name: "ModelRegistry", targets: ["ModelRegistry"]),
         .library(name: "AgentKit", targets: ["AgentKit"]),
         .library(name: "MediaKit", targets: ["MediaKit"]),
@@ -61,8 +62,21 @@ let package = Package(
             path: "packages/RuntimeLlamaCpp/Tests/RuntimeLlamaCppTests"
         ),
         .target(
+            name: "RuntimeOpenAICompatible",
+            dependencies: ["LLMCore"],
+            path: "packages/RuntimeOpenAICompatible/Sources/RuntimeOpenAICompatible",
+            linkerSettings: [
+                .linkedFramework("Security", .when(platforms: [.macOS, .iOS]))
+            ]
+        ),
+        .testTarget(
+            name: "RuntimeOpenAICompatibleTests",
+            dependencies: ["RuntimeOpenAICompatible", "LLMCore"],
+            path: "packages/RuntimeOpenAICompatible/Tests/RuntimeOpenAICompatibleTests"
+        ),
+        .target(
             name: "ModelRegistry",
-            dependencies: ["LLMCore", "RuntimeOllama", "RuntimeMLX", "RuntimeLlamaCpp"],
+            dependencies: ["LLMCore", "RuntimeOllama", "RuntimeMLX", "RuntimeLlamaCpp", "RuntimeOpenAICompatible"],
             path: "packages/ModelRegistry/Sources/ModelRegistry"
         ),
         .testTarget(
@@ -90,6 +104,11 @@ let package = Package(
                 .linkedFramework("CoreImage",    .when(platforms: [.macOS, .iOS])),
                 .linkedFramework("AppKit",       .when(platforms: [.macOS]))
             ]
+        ),
+        .testTarget(
+            name: "MediaKitTests",
+            dependencies: ["MediaKit", "LLMCore"],
+            path: "packages/MediaKit/Tests/MediaKitTests"
         ),
         .target(
             name: "UIKitOmega",

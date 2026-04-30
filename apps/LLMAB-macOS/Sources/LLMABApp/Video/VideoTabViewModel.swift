@@ -28,11 +28,18 @@ final class VideoTabViewModel: ObservableObject {
     /// countdown.
     @Published var isWatching: Bool = false
     @Published var watchSecondsRemaining: Double = 0
+    @Published var clipMode: VideoTurnMode = .adaptiveLive
 
-    /// Watch window config (tunable via future settings). 10 s × 2 Hz = 20
-    /// frames per submission — ~2 MB request payload at VGA JPEG quality 0.7.
-    private let watchWindowSeconds: Double = 10.0
-    private let watchIntervalSeconds: Double = 0.5
+    /// Capture runs near 20 fps; the turn builder decides how aggressively to
+    /// sample frames for the selected mode/model.
+    private let captureFrameIntervalSeconds: Double = 0.05
+    private let adaptiveWindowSeconds: Double = 10.0
+    private let experimentalWindowSeconds: Double = 3.0
+    private let turnBuilder = VideoTurnBuilder()
+
+    private var activeWatchWindowSeconds: Double {
+        clipMode == .experimental20FPS ? experimentalWindowSeconds : adaptiveWindowSeconds
+    }
 
     struct Exchange: Identifiable {
         let id = UUID()
@@ -119,19 +126,22 @@ final class VideoTabViewModel: ObservableObject {
 
     // MARK: - Watch mode
 
-    /// Start a watch window: camera fills a ring buffer (frame every 0.5 s,
-    /// up to 10 s); dictation runs in parallel to capture what the user
+    /// Start a watch window: camera fills a near-20fps ring buffer; dictation
+    /// runs in parallel to capture what the user
     /// says during the clip. At window expiry (or early stop), all frames
     /// + the transcript ship to the model in one multi-image request.
     func startWatch() {
         guard !isWatching, !isListening, !isReplying else { return }
         isWatching = true
         liveTranscription = ""
-        watchSecondsRemaining = watchWindowSeconds
 
-        // Ring buffer + dictation in parallel.
-        capture.startWatchCapture(intervalSeconds: watchIntervalSeconds,
-                                  windowSeconds: watchWindowSeconds)
+        let windowSeconds = activeWatchWindowSeconds
+        watchSecondsRemaining = windowSeconds
+
+        // Ring buffer + dictation in parallel. We capture near 20 fps even
+        // for adaptive mode, then downsample to fit the model profile.
+        capture.startWatchCapture(intervalSeconds: captureFrameIntervalSeconds,
+                                  windowSeconds: windowSeconds)
         dictationTask = Task { @MainActor in
             do {
                 for try await text in dictation.startDictation() {
@@ -146,9 +156,10 @@ final class VideoTabViewModel: ObservableObject {
         watchCountdownTask = Task { @MainActor [weak self] in
             guard let self else { return }
             let start = Date()
+            let duration = self.activeWatchWindowSeconds
             while !Task.isCancelled {
                 let elapsed = Date().timeIntervalSince(start)
-                let remaining = max(0, self.watchWindowSeconds - elapsed)
+                let remaining = max(0, duration - elapsed)
                 self.watchSecondsRemaining = remaining
                 if remaining <= 0 { break }
                 try? await Task.sleep(nanoseconds: 100_000_000) // 100 ms
@@ -158,7 +169,8 @@ final class VideoTabViewModel: ObservableObject {
         // Main watch task: waits for timeout or early-cancel, then submits.
         watchTask = Task { [weak self] in
             guard let self else { return }
-            try? await Task.sleep(nanoseconds: UInt64(self.watchWindowSeconds * 1_000_000_000))
+            let duration = await MainActor.run { self.activeWatchWindowSeconds }
+            try? await Task.sleep(nanoseconds: UInt64(duration * 1_000_000_000))
             guard !Task.isCancelled else { return }
             await self.finishWatch()
         }
@@ -182,7 +194,7 @@ final class VideoTabViewModel: ObservableObject {
         dictationTask = nil
 
         capture.stopWatchCapture()
-        let frames = capture.snapshotWatchWindow()
+        let frames = capture.snapshotWatchFrames()
 
         watchCountdownTask?.cancel()
         watchCountdownTask = nil
@@ -194,42 +206,48 @@ final class VideoTabViewModel: ObservableObject {
         liveTranscription = ""
 
         let displayUser = userText.isEmpty
-            ? "[watched \(Int(watchWindowSeconds))s, no speech]"
+            ? "[\(clipModeLabel) · no speech]"
             : userText
         transcript.append(Exchange(user: displayUser, assistant: ""))
         isReplying = true
-        await runWatchReply(userText: userText, frames: frames)
+        await runWatchReply(userText: userText, frames: frames, mode: clipMode)
         isReplying = false
     }
 
-    private func runWatchReply(userText: String, frames: [Data]) async {
+    private func runWatchReply(userText: String,
+                               frames: [VideoFrameSample],
+                               mode: VideoTurnMode) async {
         guard let store else { return }
         guard let resolved = await store.selected else {
             error = "no model selected"
             return
         }
         let (runtime, info) = resolved
+        let profile = info.capabilities.videoProfile
 
-        guard info.capabilities.videoIn || info.capabilities.imageIn else {
+        guard !frames.isEmpty else {
+            error = "no camera frames captured yet"
+            return
+        }
+
+        guard info.capabilities.imageIn || profile.snapshot || profile.sampledClip || profile.nativeVideo else {
             error = "\(info.displayName) can't accept frames — pick a vision-capable model"
             return
         }
 
-        var parts: [ContentPart] = []
-        for frame in frames {
-            parts.append(.image(frame, mimeType: "image/jpeg"))
+        if mode == .experimental20FPS,
+           !profile.nativeVideo,
+           profile.maxFrameRate < 20 {
+            error = "\(info.displayName) is not marked 20fps-capable — use adaptive live or switch models"
+            return
         }
-        let spokenClause = userText.isEmpty
-            ? "The user didn't say anything in these \(Int(watchWindowSeconds)) seconds — describe what happened."
-            : "While the camera rolled the user said: \"\(userText)\"."
-        parts.append(.text("""
-        You've been handed \(frames.count) JPEG frames captured at \
-        \(Int(1.0 / watchIntervalSeconds)) Hz over the last \
-        \(Int(watchWindowSeconds)) seconds, in chronological order. \
-        Interpret them as a short video clip. \(spokenClause) \
-        Reply concisely for speech playback (≤ 3 sentences). \
-        Focus on *change over time* — what moved, appeared, or happened.
-        """))
+
+        let parts = turnBuilder.parts(
+            frames: frames,
+            userText: userText,
+            mode: mode,
+            profile: profile
+        )
 
         let request = ChatRequest(
             modelId: info.id,
@@ -267,19 +285,18 @@ final class VideoTabViewModel: ObservableObject {
         }
         let (runtime, info) = resolved
 
-        guard info.capabilities.videoIn || info.capabilities.imageIn else {
+        guard info.capabilities.imageIn || info.capabilities.videoProfile.snapshot else {
             error = "\(info.displayName) can't accept images — switch to any vision-capable model (Gemma 4 E4B / 26B / 31B, Qwen 3 VL, MiniCPM-V, …)"
             return
         }
 
-        var parts: [ContentPart] = []
-        if let frame {
-            parts.append(.image(frame, mimeType: "image/jpeg"))
-        }
-        parts.append(.text(
-            "Live camera context. The user just said: \"\(userText)\". "
-            + "Answer concisely for speech playback (≤ 2 sentences)."
-        ))
+        let frames = frame.map { [VideoFrameSample(timestamp: Date(), jpegData: $0)] } ?? []
+        let parts = turnBuilder.parts(
+            frames: frames,
+            userText: userText,
+            mode: .snapshot,
+            profile: info.capabilities.videoProfile
+        )
 
         let request = ChatRequest(
             modelId: info.id,
@@ -312,4 +329,15 @@ final class VideoTabViewModel: ObservableObject {
     user's camera and hear what they say. Keep answers short and spoken, \
     one to two sentences, as if on a phone call.
     """
+
+    private var clipModeLabel: String {
+        switch clipMode {
+        case .snapshot:
+            "snapshot"
+        case .adaptiveLive:
+            "adaptive live"
+        case .experimental20FPS:
+            "20fps experimental"
+        }
+    }
 }

@@ -83,6 +83,26 @@ final class RuntimeOllamaTests: XCTestCase {
         XCTAssertEqual(message.images?.first, png.base64EncodedString())
     }
 
+    func testWireBodyPreservesMultipleImageOrder() throws {
+        let first = Data([0x01])
+        let second = Data([0x02])
+        let req = ChatRequest(
+            modelId: "gemma-4:e4b",
+            messages: [Message(role: .user, parts: [
+                .image(first, mimeType: "image/jpeg"),
+                .text("then"),
+                .image(second, mimeType: "image/jpeg")
+            ])]
+        )
+
+        let body = try OllamaRuntime.toWireBody(req)
+        XCTAssertEqual(body.messages.first?.images, [
+            first.base64EncodedString(),
+            second.base64EncodedString()
+        ])
+        XCTAssertEqual(body.messages.first?.content, "then")
+    }
+
     func testWireBodyMapsToolsToOpenAIShape() throws {
         let tool = Tool(
             id: "read_file",

@@ -3,6 +3,7 @@ import LLMCore
 import RuntimeOllama
 import RuntimeMLX
 import RuntimeLlamaCpp
+import RuntimeOpenAICompatible
 
 /// Central aggregator across every installed `LLMRuntime`. Scans them all in
 /// parallel, merges the results, and upgrades each `ModelInfo` with the
@@ -61,7 +62,7 @@ public actor ModelRegistry {
     /// contributed in that case. So installing just one of Ollama / llama.cpp
     /// / MLX is fine; the others simply appear greyed-out in Settings.
     public static func defaultRuntimes() -> [any LLMRuntime] {
-        [OllamaRuntime(), MLXRuntime(), LlamaCppRuntime()]
+        [OllamaRuntime(), MLXRuntime(), LlamaCppRuntime(), DeepSeekRuntime()]
     }
 
     // MARK: - Scan
@@ -84,7 +85,9 @@ public actor ModelRegistry {
                             displayName: runtime.displayName,
                             available: false,
                             modelCount: 0,
-                            error: "runtime not reachable"
+                            error: runtime.id == RuntimeDeepSeek.id
+                                ? "API key not configured"
+                                : "runtime not reachable"
                         ), [])
                     }
                     do {

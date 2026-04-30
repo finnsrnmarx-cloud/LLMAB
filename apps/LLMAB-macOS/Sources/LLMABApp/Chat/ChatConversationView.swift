@@ -32,7 +32,10 @@ struct ChatConversationView: View {
                 Text(info.displayName)
                     .font(.system(.footnote, design: .monospaced))
                     .foregroundStyle(Midnight.mist)
-                capabilityPill("256K", active: true)
+                if info.capabilities.privacy == .cloudProvider {
+                    capabilityPill("cloud", active: true)
+                }
+                capabilityPill("\(info.capabilities.contextTokens / 1000)K", active: true)
                 if info.capabilities.thinking {
                     capabilityPill("think", active: true)
                 }

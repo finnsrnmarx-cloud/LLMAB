@@ -2,11 +2,11 @@
 
 **A local-LLM macOS app for Gemma 4 and friends.**
 
-LLMAB (wordmark: lowercase **ω**) is a SwiftUI-first, fully on-device multimodal chat, coding, and agent app. It runs against local LLM runtimes (Ollama first, then MLX and llama.cpp) and auto-detects which models are installed on the machine, gating features by what the selected model can actually do.
+LLMAB (wordmark: lowercase **ω**) is a SwiftUI-first multimodal chat, coding, and agent app. It defaults to local LLM runtimes (Ollama first, then MLX and llama.cpp), can opt into cloud providers such as DeepSeek, and auto-detects which models are installed or configured on the machine, gating features by what the selected model can actually do.
 
 ## Why
 
-- **On-device first.** No third-party cloud AI. Apple App Review guideline 5.1.2(i) explicitly exempts on-device inference from the new third-party-AI disclosure regime; the app posture is favorable.
+- **On-device first.** Local runtimes remain the default. Cloud providers are opt-in, visibly badged, and store API keys in Keychain.
 - **Gemma 4 native.** Capability matrix (text, image, audio, video) is wired into the UI so each variant (E2B, E4B, 26B A4B, 31B dense) surfaces only the tabs it can serve.
 - **Aurora on midnight.** Full-spectrum gradient on near-black, lowercase ω as the mark, every active feature animates.
 
@@ -28,6 +28,7 @@ packages/
   RuntimeOllama/            Ollama HTTP adapter (default)
   RuntimeMLX/               mlx_lm adapter
   RuntimeLlamaCpp/          llama.cpp / llama-server adapter
+  RuntimeOpenAICompatible/  DeepSeek / OpenAI-compatible cloud adapters
   ModelRegistry/            Detection + Gemma 4 capability map
   AgentKit/                 Tool-use loop (file, shell, web)
   MediaKit/                 AVFoundation capture, Speech, TTS
@@ -41,7 +42,7 @@ assets/brand/               ω glyph, aurora gradient tokens, app icon
 1. **Chat** (default) — live conversation, typed chat, dictate, image+text, optional image-gen.
 2. **Code** — CLI-styled file tree + streaming bug-fix/refactor analysis.
 3. **Agents** — tool-use loop (read/write file, run shell, web search, list dir).
-4. **Video** — camera + mic → any vision-capable local model → TTS response.
+4. **Video** — camera + mic → snapshot, adaptive live clip, or guarded 20fps experimental mode → vision-capable local model → TTS response.
 
 All tabs feature-gate on the selected model's capability badges.
 

@@ -74,8 +74,10 @@ For each release candidate run the checklist with these runtime states:
 1. Ollama installed + running.
 2. llama-server installed + running.
 3. MLX available.
-4. One runtime missing/unreachable.
-5. No runtime reachable (empty fallback UX).
+4. DeepSeek cloud provider with no API key configured.
+5. DeepSeek cloud provider with an API key configured.
+6. One runtime missing/unreachable.
+7. No runtime reachable (empty fallback UX).
 
 ## Permission matrix to cover in manual QA
 

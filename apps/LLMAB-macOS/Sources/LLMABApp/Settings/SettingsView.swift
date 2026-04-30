@@ -3,6 +3,7 @@ import LLMCore
 import ModelRegistry
 import RuntimeOllama
 import RuntimeLlamaCpp
+import RuntimeOpenAICompatible
 import MediaKit
 import UIKitOmega
 
@@ -19,6 +20,9 @@ struct SettingsView: View {
     @State private var pullProgress: PullProgress?
     @State private var isPulling: Bool = false
     @State private var pullError: String?
+    @State private var deepSeekAPIKeyInput: String = ""
+    @State private var deepSeekKeyConfigured: Bool = CloudAPIKeyStore.deepSeek.hasAPIKey()
+    @State private var cloudProviderError: String?
     // Voice selection is persisted on the store so the choice survives
     // across tab switches and launches.
 
@@ -29,6 +33,7 @@ struct SettingsView: View {
             VStack(alignment: .leading, spacing: 28) {
                 header
                 runtimesSection
+                cloudProvidersSection
                 LocalGGUFsSection(controller: store.llamaServer) {
                     // When the server state transitions, re-scan so the
                     // adapter's newly-served model shows up in Models.
@@ -42,6 +47,61 @@ struct SettingsView: View {
         }
         .frame(minWidth: 640, minHeight: 560)
         .background(Midnight.midnight)
+        .onAppear { refreshCloudKeyState() }
+    }
+
+    // MARK: - Cloud providers
+
+    private var cloudProvidersSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            sectionTitle("cloud providers (opt-in)")
+            Text("Local runtimes stay on-device/loopback. DeepSeek is OpenAI-compatible text/tool/reasoning only; prompts are sent to DeepSeek only when you save a key and select a DeepSeek model.")
+                .font(.system(.caption2, design: .monospaced))
+                .foregroundStyle(Midnight.fog)
+                .fixedSize(horizontal: false, vertical: true)
+
+            HStack(spacing: 10) {
+                AuroraRing(size: 14, lineWidth: 1.5,
+                           state: deepSeekKeyConfigured ? .success : .idle)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("DeepSeek · OpenAI-compatible")
+                        .font(.system(.body, design: .monospaced).weight(.semibold))
+                        .foregroundStyle(Midnight.mist)
+                    Text(deepSeekKeyConfigured ? "API key stored in Keychain" : "no API key configured")
+                        .font(.system(.caption2, design: .monospaced))
+                        .foregroundStyle(Midnight.fog)
+                }
+                Spacer()
+                SecureField("sk-…", text: $deepSeekAPIKeyInput)
+                    .textFieldStyle(.plain)
+                    .font(.system(.caption, design: .monospaced))
+                    .foregroundStyle(Midnight.mist)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .frame(width: 220)
+                    .background(Midnight.indigoDeep)
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                Button("save") { saveDeepSeekKey() }
+                    .buttonStyle(.plain)
+                    .font(.system(.caption2, design: .monospaced).weight(.semibold))
+                    .foregroundStyle(Midnight.mist)
+                    .disabled(deepSeekAPIKeyInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                Button("clear") { clearDeepSeekKey() }
+                    .buttonStyle(.plain)
+                    .font(.system(.caption2, design: .monospaced))
+                    .foregroundStyle(Midnight.fog)
+                    .disabled(!deepSeekKeyConfigured)
+            }
+            .padding(10)
+            .background(Midnight.abyss)
+            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+
+            if let cloudProviderError {
+                Text(cloudProviderError)
+                    .font(.system(.caption2, design: .monospaced))
+                    .foregroundStyle(Midnight.fog)
+            }
+        }
     }
 
     // MARK: - Header
@@ -183,9 +243,16 @@ struct SettingsView: View {
 
     private func capabilityBadges(for c: ModelCapabilities) -> some View {
         HStack(spacing: 6) {
+            badge(c.privacy == .cloudProvider ? "cloud" : "local", style: Midnight.navy)
             if c.imageIn  { badge("img",   style: Midnight.navy) }
             if c.audioIn  { badge("aud",   style: Midnight.navy) }
             if c.videoIn  { badge("vid",   style: Midnight.navy) }
+            if c.videoProfile.sampledClip {
+                badge("clip \(Int(c.videoProfile.maxFrameRate))fps", style: Midnight.navy)
+            }
+            if c.videoProfile.nativeVideo {
+                badge("native vid", style: Midnight.navy)
+            }
             if c.imageOut { badge("→img",  style: Midnight.navy) }
             if c.toolUse  { badge("tool",  style: Midnight.navy) }
             if c.thinking { badge("think", style: Midnight.navy) }
@@ -201,6 +268,35 @@ struct SettingsView: View {
             .padding(.vertical, 2)
             .background(style)
             .clipShape(Capsule())
+    }
+
+    private func refreshCloudKeyState() {
+        deepSeekKeyConfigured = CloudAPIKeyStore.deepSeek.hasAPIKey()
+    }
+
+    private func saveDeepSeekKey() {
+        let value = deepSeekAPIKeyInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !value.isEmpty else { return }
+        do {
+            try CloudAPIKeyStore.deepSeek.saveAPIKey(value)
+            deepSeekAPIKeyInput = ""
+            cloudProviderError = nil
+            refreshCloudKeyState()
+            Task { await store.refresh() }
+        } catch {
+            cloudProviderError = String(describing: error)
+        }
+    }
+
+    private func clearDeepSeekKey() {
+        do {
+            try CloudAPIKeyStore.deepSeek.deleteAPIKey()
+            cloudProviderError = nil
+            refreshCloudKeyState()
+            Task { await store.refresh() }
+        } catch {
+            cloudProviderError = String(describing: error)
+        }
     }
 
     // MARK: - Pull

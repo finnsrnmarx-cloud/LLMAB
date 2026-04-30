@@ -13,7 +13,8 @@ public struct ModelInfo: Sendable, Hashable, Codable, Identifiable {
     /// Human-readable label ("Gemma 4 · E4B").
     public var displayName: String
 
-    /// Identifier of the owning runtime: "ollama", "mlx", "llamacpp".
+    /// Identifier of the owning runtime/provider: "ollama", "mlx",
+    /// "llamacpp", "deepseek", etc.
     public var runtimeId: String
 
     /// Family / architecture hint used by the capability-inference heuristics.

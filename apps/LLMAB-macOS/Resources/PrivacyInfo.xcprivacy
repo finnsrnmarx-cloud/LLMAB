@@ -3,11 +3,11 @@
 <plist version="1.0">
 <dict>
     <!--
-    ω runs every LLM locally. We do not collect user data, we do not track,
-    and the only network activity is loopback to locally-installed runtimes
-    (Ollama on 127.0.0.1:11434, llama-server on 127.0.0.1:8080). This
-    manifest reflects that posture for App Review and stays exempt under
-    guideline 5.1.2(i) on-device inference.
+    ω is local-first. We do not collect user data or track users. Default
+    network activity is loopback to locally-installed runtimes (Ollama on
+    127.0.0.1:11434, llama-server on 127.0.0.1:8080). Users may explicitly
+    configure cloud providers with Keychain-stored API keys; those providers
+    are opt-in and visibly badged in the app.
     -->
     <key>NSPrivacyTracking</key>
     <false/>
