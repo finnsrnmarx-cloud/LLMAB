@@ -15,7 +15,7 @@ import Foundation
 ///
 /// Not `@MainActor` so `@StateObject` construction needs no isolation; the
 /// `session` is itself thread-safe per Apple docs.
-public final class VideoCaptureService: NSObject, ObservableObject {
+public final class VideoCaptureService: NSObject, ObservableObject, @unchecked Sendable {
 
     #if canImport(AVFoundation)
     public let session = AVCaptureSession()

@@ -15,8 +15,9 @@ public enum RuntimeLlamaCpp {
 ///   - Listing models by hitting `/v1/models` which llama-server implements
 ///     OpenAI-style.
 ///
-/// v1 supports text-only chat via `/v1/chat/completions` SSE streaming.
-/// Image-in and native tool-use land in a follow-up.
+/// Supports OpenAI-compatible SSE streaming via `/v1/chat/completions`,
+/// including text, image parts, and streamed tool calls when the served model
+/// exposes them.
 public final class LlamaCppRuntime: LLMRuntime, @unchecked Sendable {
 
     public let id = RuntimeLlamaCpp.id
@@ -88,39 +89,10 @@ public final class LlamaCppRuntime: LLMRuntime, @unchecked Sendable {
 
     private func streamChat(_ request: ChatRequest,
                             continuation: AsyncThrowingStream<ChatChunk, Error>.Continuation) async throws {
-        struct BodyMessage: Encodable {
-            let role: String
-            let content: String
-        }
-        struct Body: Encodable {
-            let model: String
-            let messages: [BodyMessage]
-            let stream: Bool
-            let temperature: Double?
-            let top_p: Double?
-            let max_tokens: Int?
-        }
-
-        let modelName = request.modelId.hasPrefix("\(RuntimeLlamaCpp.id):")
-            ? String(request.modelId.dropFirst(RuntimeLlamaCpp.id.count + 1))
-            : request.modelId
-
-        let messages = request.messages.map {
-            BodyMessage(role: $0.role.rawValue, content: $0.textContent)
-        }
-        let body = Body(
-            model: modelName,
-            messages: messages,
-            stream: request.stream,
-            temperature: request.sampling.temperature,
-            top_p: request.sampling.topP,
-            max_tokens: request.sampling.maxTokens
-        )
-
         var req = URLRequest(url: endpoint.appendingPathComponent("/v1/chat/completions"))
         req.httpMethod = "POST"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        req.httpBody = try JSONEncoder().encode(body)
+        req.httpBody = try Self.wireBodyData(for: request)
 
         let (bytes, resp) = try await session.bytes(for: req)
         guard let http = resp as? HTTPURLResponse,
@@ -133,11 +105,48 @@ public final class LlamaCppRuntime: LLMRuntime, @unchecked Sendable {
 
         struct Chunk: Decodable {
             struct Choice: Decodable {
-                struct Delta: Decodable { let content: String? }
+                struct Delta: Decodable {
+                    let content: String?
+                    let tool_calls: [ToolCallDelta]?
+                }
+                struct ToolCallDelta: Decodable {
+                    struct Function: Decodable {
+                        let name: String?
+                        let arguments: String?
+                    }
+                    let index: Int?
+                    let id: String?
+                    let function: Function?
+                }
                 let delta: Delta?
                 let finish_reason: String?
             }
             let choices: [Choice]
+        }
+
+        struct ToolCallBuffer {
+            var id: String?
+            var name: String?
+            var arguments = ""
+        }
+
+        var toolBuffers: [Int: ToolCallBuffer] = [:]
+        var didEmitToolCalls = false
+        var didYieldFinish = false
+
+        func emitToolCalls() {
+            guard !didEmitToolCalls else { return }
+            didEmitToolCalls = true
+            for key in toolBuffers.keys.sorted() {
+                guard let buffer = toolBuffers[key],
+                      let name = buffer.name else { continue }
+                let arguments = buffer.arguments.isEmpty ? "{}" : buffer.arguments
+                continuation.yield(.toolCall(ToolCall(
+                    id: buffer.id ?? UUID().uuidString,
+                    toolId: name,
+                    argumentsJSON: Data(arguments.utf8)
+                )))
+            }
         }
 
         let decoder = JSONDecoder()
@@ -150,7 +159,9 @@ public final class LlamaCppRuntime: LLMRuntime, @unchecked Sendable {
             guard line.hasPrefix("data: ") else { continue }
             let payload = String(line.dropFirst(6))
             if payload == "[DONE]" {
-                continuation.yield(.finish(reason: .stop, usage: nil))
+                if !didYieldFinish {
+                    continuation.yield(.finish(reason: .stop, usage: nil))
+                }
                 break
             }
             guard let data = payload.data(using: .utf8),
@@ -159,7 +170,21 @@ public final class LlamaCppRuntime: LLMRuntime, @unchecked Sendable {
             if let text = choice.delta?.content, !text.isEmpty {
                 continuation.yield(.text(text))
             }
+            if let calls = choice.delta?.tool_calls {
+                for call in calls {
+                    let index = call.index ?? toolBuffers.count
+                    var buffer = toolBuffers[index] ?? ToolCallBuffer()
+                    if let id = call.id { buffer.id = id }
+                    if let name = call.function?.name { buffer.name = name }
+                    if let arguments = call.function?.arguments { buffer.arguments += arguments }
+                    toolBuffers[index] = buffer
+                }
+            }
             if let reason = choice.finish_reason {
+                if reason == ChatChunk.FinishReason.toolCalls.rawValue {
+                    emitToolCalls()
+                }
+                didYieldFinish = true
                 continuation.yield(.finish(
                     reason: ChatChunk.FinishReason(rawValue: reason) ?? .stop,
                     usage: nil
@@ -167,6 +192,150 @@ public final class LlamaCppRuntime: LLMRuntime, @unchecked Sendable {
             }
         }
         continuation.finish()
+    }
+
+    // MARK: - Wire format
+
+    private struct ChatBody: Encodable {
+        let model: String
+        let messages: [BodyMessage]
+        let stream: Bool
+        let temperature: Double?
+        let top_p: Double?
+        let max_tokens: Int?
+        let tools: [ToolSpec]?
+    }
+
+    private struct BodyMessage: Encodable {
+        let role: String
+        let content: MessageContent?
+        let tool_call_id: String?
+        let tool_calls: [BodyToolCall]?
+    }
+
+    private enum MessageContent: Encodable {
+        case text(String)
+        case parts([ContentBlock])
+
+        func encode(to encoder: Encoder) throws {
+            var container = encoder.singleValueContainer()
+            switch self {
+            case .text(let text):
+                try container.encode(text)
+            case .parts(let parts):
+                try container.encode(parts)
+            }
+        }
+    }
+
+    private struct ContentBlock: Encodable {
+        struct ImageURL: Encodable { let url: String }
+
+        let type: String
+        let text: String?
+        let image_url: ImageURL?
+
+        static func text(_ value: String) -> ContentBlock {
+            ContentBlock(type: "text", text: value, image_url: nil)
+        }
+
+        static func image(data: Data, mimeType: String) -> ContentBlock {
+            ContentBlock(
+                type: "image_url",
+                text: nil,
+                image_url: ImageURL(url: "data:\(mimeType);base64,\(data.base64EncodedString())")
+            )
+        }
+    }
+
+    private struct BodyToolCall: Encodable {
+        struct Function: Encodable {
+            let name: String
+            let arguments: String
+        }
+        let id: String
+        let type = "function"
+        let function: Function
+    }
+
+    private struct ToolSpec: Encodable {
+        struct FunctionSpec: Encodable {
+            let name: String
+            let description: String
+            let parameters: ToolParameterSchema
+        }
+        let type = "function"
+        let function: FunctionSpec
+    }
+
+    static func wireBodyData(for request: ChatRequest) throws -> Data {
+        try JSONEncoder().encode(toWireBody(request))
+    }
+
+    private static func toWireBody(_ request: ChatRequest) -> ChatBody {
+        let modelName = request.modelId.hasPrefix("\(RuntimeLlamaCpp.id):")
+            ? String(request.modelId.dropFirst(RuntimeLlamaCpp.id.count + 1))
+            : request.modelId
+
+        let messages = request.messages.map(toWireMessage)
+        let tools = request.tools.isEmpty ? nil : request.tools.map { tool in
+            ToolSpec(function: .init(
+                name: tool.id,
+                description: tool.description,
+                parameters: tool.parameters
+            ))
+        }
+
+        return ChatBody(
+            model: modelName,
+            messages: messages,
+            stream: request.stream,
+            temperature: request.sampling.temperature,
+            top_p: request.sampling.topP,
+            max_tokens: request.sampling.maxTokens,
+            tools: tools
+        )
+    }
+
+    private static func toWireMessage(_ message: Message) -> BodyMessage {
+        let content: MessageContent?
+        if message.parts.contains(where: { part in
+            if case .image = part { return true }
+            return false
+        }) {
+            let blocks = message.parts.compactMap { part -> ContentBlock? in
+                switch part {
+                case .text(let text):
+                    return .text(text)
+                case .image(let data, let mimeType):
+                    return .image(data: data, mimeType: mimeType)
+                case .audio, .video:
+                    return nil
+                }
+            }
+            content = .parts(blocks)
+        } else if message.textContent.isEmpty, !message.toolCalls.isEmpty {
+            content = nil
+        } else {
+            content = .text(message.textContent)
+        }
+
+        let calls = message.toolCalls.isEmpty ? nil : message.toolCalls.map { call in
+            BodyToolCall(
+                id: call.id,
+                function: .init(
+                    name: call.toolId,
+                    arguments: String(data: call.argumentsJSON, encoding: .utf8) ?? "{}"
+                )
+            )
+        }
+
+        return BodyMessage(
+            role: message.role.rawValue,
+            content: content,
+            tool_call_id: message.toolCallId,
+            tool_calls: calls
+        )
     }
 
     // MARK: - Helpers

@@ -1,8 +1,14 @@
 # Resources
 
-Populated in chunk 7 base (this directory exists so the SwiftPM path resolves)
-and fully filled out in chunk 16 (packaging):
+Runtime resources copied into the macOS app bundle:
 
-- `Assets.xcassets/AppIcon.appiconset/` — rendered ω icon at every macOS size
-- `Assets.xcassets/AccentColor.colorset/` — aurora accent for system UI
 - `PrivacyInfo.xcprivacy` — privacy manifest (see `docs/APP-STORE.md`)
+
+The Dock icon is generated on demand from `assets/brand/app-icon.svg` via:
+
+```sh
+make icon
+```
+
+That command writes `AppIcon.icns` into this directory. The generated binary is
+not checked in, so rerun it after changing the source SVG.

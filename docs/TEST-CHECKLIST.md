@@ -53,7 +53,7 @@ For each tab: **Code / Chat / Agents / Video / Settings**
 | [ ] Click `Chat` | Shows conversation + composer |
 | [ ] Click `Dictate` | Shows dictation view with big ω button |
 | [ ] Click `Image` | Shows conversation with "tap the paperclip" hint banner |
-| [ ] Click `Live` / `Create` | Shows placeholder card explaining "ships later" |
+| [ ] Click `Live` / `Create` | Shows feature-gated placeholder card without stale chunk references |
 
 ### Chat mode — composer
 
@@ -147,8 +147,9 @@ For each tab: **Code / Chat / Agents / Video / Settings**
 | [ ] Click `start camera` | First time: camera permission dialog; grant it |
 | [ ] Preview appears | Live feed visible; "live" chip + spinner overlay in the corner |
 | [ ] Hold the big ω button (or tap, depending on platform) | Dictation starts; live transcription appears in the sidebar |
-| [ ] Release (or tap again) | Latest frame + your words go to a Gemma 4 26B/31B model; reply streams into transcript AND is spoken via TTS |
-| [ ] If you're on E-series (E2B/E4B) | Sidebar shows "X cannot accept frames — switch to Gemma 4 26B / 31B" |
+| [ ] Release (or tap again) | Latest frame + your words go to any vision-capable model; reply streams into transcript AND is spoken via TTS |
+| [ ] If you're on a text-only model | Sidebar shows "X can't accept images/frames — switch to a vision-capable model" |
+| [ ] Click `watch 10s` | Countdown runs, frames are sampled, and the final reply focuses on change over time |
 | [ ] Click ✕ in the control bar | Camera stops, preview disappears |
 
 ---
@@ -223,3 +224,29 @@ If a row fails:
 
 Include the commit SHA from `git rev-parse --short HEAD` so we know which
 state failed.
+
+---
+
+## 10. Evidence capture and failure signatures
+
+For any failed row, record:
+
+- exact checklist row and action text
+- visible error text in-app
+- log source (`xcodebuild`, Xcode debug console, or runtime logs)
+- whether issue reproduces after app relaunch
+
+Common failure signatures to call out verbatim:
+
+- runtime unavailable / unreachable on loopback
+- model does not accept selected modality (image/audio/video)
+- consent denied (agent tools)
+- request cancelled by user
+- step budget exhausted
+
+When filing the issue, include:
+
+- commit SHA (`git rev-parse --short HEAD`)
+- runtime used (Ollama / MLX / llama.cpp)
+- selected model id
+- macOS version + machine RAM tier

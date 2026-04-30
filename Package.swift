@@ -55,6 +55,11 @@ let package = Package(
             dependencies: ["LLMCore"],
             path: "packages/RuntimeLlamaCpp/Sources/RuntimeLlamaCpp"
         ),
+        .testTarget(
+            name: "RuntimeLlamaCppTests",
+            dependencies: ["RuntimeLlamaCpp", "LLMCore"],
+            path: "packages/RuntimeLlamaCpp/Tests/RuntimeLlamaCppTests"
+        ),
         .target(
             name: "ModelRegistry",
             dependencies: ["LLMCore", "RuntimeOllama", "RuntimeMLX", "RuntimeLlamaCpp"],
