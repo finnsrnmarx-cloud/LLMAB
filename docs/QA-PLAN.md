@@ -28,6 +28,15 @@ make qa-fast
 6. final app bundle metadata normalization
 7. `codesign --verify --deep --strict` on the Debug app bundle
 
+For local desktop smoke tests, use:
+
+```bash
+make run-app
+```
+
+`run-app` builds the Debug app, launches it, strips launch-time Finder metadata
+that macOS may attach to the bundle, then re-runs strict codesign verification.
+
 ### 2) Full mode (release candidate)
 
 Run before cut/release and for major feature chunks:

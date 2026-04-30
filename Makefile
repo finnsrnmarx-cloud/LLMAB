@@ -14,6 +14,8 @@
 
 .PHONY: build test lint cli xcodeproj app run-app icon package strip-macos-metadata qa-fast qa-full clean
 
+APP_BUNDLE := build/DerivedData/Build/Products/Debug/LLMAB.app
+
 build:
 	swift build -c debug
 
@@ -44,10 +46,13 @@ app: strip-macos-metadata xcodeproj
 	    -configuration Debug \
 	    -derivedDataPath build/DerivedData \
 	    build
-	./scripts/normalize-macos-metadata.sh "build/DerivedData/Build/Products/Debug/LLMAB.app"
+	./scripts/normalize-macos-metadata.sh "$(APP_BUNDLE)"
 
 run-app: app
-	open "build/DerivedData/Build/Products/Debug/LLMAB.app"
+	open "$(APP_BUNDLE)"
+	@sleep 1
+	./scripts/normalize-macos-metadata.sh "$(APP_BUNDLE)"
+	codesign --verify --deep --strict --verbose=2 "$(APP_BUNDLE)"
 
 package:
 	./scripts/package.sh
