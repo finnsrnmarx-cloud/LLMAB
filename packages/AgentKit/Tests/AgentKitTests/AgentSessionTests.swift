@@ -55,12 +55,12 @@ final class AgentSessionTests: XCTestCase {
         ])
         let info = toolCapableInfo()
 
-        var toolRan = false
+        let toolRan = AsyncFlag()
         let tool = ClosureTool(
             id: "echo",
             requiresConsent: false
         ) { _ in
-            toolRan = true
+            await toolRan.set()
             return "echoed"
         }
 
@@ -82,7 +82,8 @@ final class AgentSessionTests: XCTestCase {
             default:                             break
             }
         }
-        XCTAssertTrue(toolRan, "tool body never executed")
+        let didRun = await toolRan.value
+        XCTAssertTrue(didRun, "tool body never executed")
         XCTAssertEqual(events, ["call:echo", "result:echo", "completed"])
     }
 
@@ -101,12 +102,12 @@ final class AgentSessionTests: XCTestCase {
             [.text("user said no"), .finish(reason: .stop, usage: nil)]
         ])
 
-        var toolRan = false
+        let toolRan = AsyncFlag()
         let tool = ClosureTool(
             id: "shell",
             requiresConsent: true
         ) { _ in
-            toolRan = true
+            await toolRan.set()
             return "shouldn't run"
         }
 
@@ -123,7 +124,8 @@ final class AgentSessionTests: XCTestCase {
                 errors.append(msg)
             }
         }
-        XCTAssertFalse(toolRan, "consent was denied but tool executed")
+        let didRun = await toolRan.value
+        XCTAssertFalse(didRun, "consent was denied but tool executed")
         XCTAssertEqual(errors, ["consent denied"])
     }
 
@@ -262,6 +264,16 @@ struct ClosureTool: AgentTool {
 
     func execute(arguments: Data) async throws -> String {
         try await body(arguments)
+    }
+}
+
+actor AsyncFlag {
+    private var storedValue = false
+
+    var value: Bool { storedValue }
+
+    func set() {
+        storedValue = true
     }
 }
 

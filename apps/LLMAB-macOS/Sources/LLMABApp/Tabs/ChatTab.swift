@@ -39,7 +39,7 @@ struct ChatTab: View {
                     DictateView(chat: chat)
                 case .live:
                     PlaceholderCard(
-                        title: "Ships later in chunk 9.5 / 13",
+                        title: "Live loop queued",
                         message: "Continuous live conversation: press once, the app listens, transcribes, replies, and speaks — then loops. Uses the same DictationService + TTSService; requires audio-capable model (E2B / E4B).",
                         palette: .full
                     )

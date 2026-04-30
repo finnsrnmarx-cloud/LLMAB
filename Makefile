@@ -8,9 +8,11 @@
 #   make lint        swiftlint --strict
 #   make cli         swift build -c release --product llmab
 #   make package     sign + notarise + DMG (see docs/RELEASE.md)
+#   make qa-fast     run the PR confidence checks
+#   make qa-full     run PR checks + manual checklist handoff artifacts
 #   make clean       clean SwiftPM and build outputs
 
-.PHONY: build test lint cli xcodeproj app run-app icon package clean
+.PHONY: build test lint cli xcodeproj app run-app icon package strip-macos-metadata qa-fast qa-full clean
 
 build:
 	swift build -c debug
@@ -33,7 +35,10 @@ xcodeproj:
 icon:
 	./scripts/make-icon.sh
 
-app: xcodeproj
+strip-macos-metadata:
+	./scripts/normalize-macos-metadata.sh
+
+app: strip-macos-metadata xcodeproj
 	xcodebuild -project LLMAB.xcodeproj \
 	    -scheme LLMABApp \
 	    -configuration Debug \
@@ -45,6 +50,13 @@ run-app: app
 
 package:
 	./scripts/package.sh
+
+
+qa-fast:
+	./scripts/qa.sh fast
+
+qa-full:
+	./scripts/qa.sh full
 
 clean:
 	swift package clean

@@ -32,6 +32,13 @@ targets:
       - path: apps/LLMAB-macOS/Sources/LLMABApp
     resources:
       - path: apps/LLMAB-macOS/Resources
+    postBuildScripts:
+      - name: Strip signing metadata
+        basedOnDependencyAnalysis: false
+        script: |
+          "${SRCROOT}/scripts/normalize-macos-metadata.sh" \
+            "${SRCROOT}/apps/LLMAB-macOS" \
+            "${TARGET_BUILD_DIR}/${FULL_PRODUCT_NAME}"
     # NOTE: we deliberately do NOT use the top-level `info: path:` or
     # `entitlements: path:` keys here — XcodeGen interprets both as
     # "synthesise a fresh plist at this path at generate time", which
